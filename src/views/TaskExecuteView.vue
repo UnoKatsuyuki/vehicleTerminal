@@ -190,6 +190,7 @@ const distance = ref(0);
 const systemTime = ref(new Date().toISOString());
 const isAgvActive = ref(false); // 默认车辆为停止状态
 const flaws = ref([]);
+const player = ref(null);
 
 // --- UI状态 ---
 const isModalVisible = ref(false);
@@ -322,6 +323,8 @@ onMounted(async () => {
         { id: 'cam3', name: '摄像头3', url: config.cam3 },
         { id: 'cam4', name: '摄像头4', url: config.cam4 },
     ];
+    // **获取配置后，立即初始化第一个摄像头的播放器**
+    initPlayer(cameras.value[0]?.url);
   } catch (error) {
     console.error("获取系统配置失败:", error);
   }
@@ -331,15 +334,55 @@ onMounted(async () => {
   await pollFlawList();
 
   // 3. 启动定时轮询
-  taskPollInterval = setInterval(pollTaskDetails, 3000); // 每3秒更新一次车辆状态
-  flawPollInterval = setInterval(pollFlawList, 10000); // 每10秒检查一次新故障
+  taskPollInterval = setInterval(pollTaskDetails, 3000);
+  flawPollInterval = setInterval(pollFlawList, 10000);
 });
 
 onUnmounted(() => {
-  // 组件销毁时清除定时器，防止内存泄漏
+  // 组件销毁时，销毁播放器并清除定时器
+  if (player.value) {
+    player.value.destroy();
+  }
   clearInterval(taskPollInterval);
   clearInterval(flawPollInterval);
 });
+
+// --- 视频播放器相关方法 ---
+const initPlayer = (videoUrl) => {
+  // 销毁旧的播放器实例
+  if (player.value) {
+    player.value.destroy();
+    player.value = null;
+  }
+
+  // 如果没有视频地址，则不初始化
+  if (!videoUrl) {
+    console.warn("视频地址为空，无法初始化播放器。");
+    return;
+  }
+
+  console.log(`正在初始化播放器，地址: ${videoUrl}`);
+
+  // 创建新的EasyPlayer实例
+  player.value = new window.EasyPlayer.Player({
+    el: '#video-container', // 挂载点
+    url: videoUrl,          // 视频流地址
+    autoplay: true,         // 自动播放
+    live: true,             // 直播模式
+    decode_type: 'auto',    // 自动选择解码方式
+    show_audio_bar: false,  // 不显示音频条
+  });
+};
+
+const refreshMonitor = () => {
+    console.log("手动刷新监控...");
+    const cam = currentCamera.value;
+    if (cam && cam.url) {
+        initPlayer(cam.url);
+    } else {
+        console.error("当前摄像头没有有效的URL，无法刷新。");
+    }
+};
 
 // --- 监视器 ---
 watch(isAgvActive, async (newValue, oldValue) => {
@@ -355,6 +398,15 @@ watch(isAgvActive, async (newValue, oldValue) => {
       isAgvActive.value = oldValue;
     }
   }
+});
+
+// **新增监视器：监视摄像头选择的变化**
+watch(selectedCameraId, (newId) => {
+    const newCam = cameras.value.find(c => c.id === newId);
+    if (newCam) {
+        // 当用户切换摄像头时，使用新的URL重新初始化播放器
+        initPlayer(newCam.url);
+    }
 });
 </script>
 
