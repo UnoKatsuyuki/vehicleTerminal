@@ -35,29 +35,42 @@ agvApiClient.interceptors.response.use(
  * @returns {Promise<Array>} 包含摄像头对象的数组
  */
 export const getDeviceList = () => {
-    // 调用真实接口: GET /devices
-    return cameraApiClient.get('/devices?page=1&size=999&status=&id&name', {
-        headers: {
-            'Authorization': 'Basic YWRtaW4xMjM6QWRtaW5AMTIz'
-        },
-        // 关键：告诉axios不要自动解析JSON，返回原始文本
-        transformResponse: [(data) => data]
-    }).then(response => {
-        // 现在 response.data 就是一个纯粹的字符串
-        // 我们需要检查它是否是一个有效的字符串
-        if (typeof response.data === 'string' && response.data.trim().length > 0) {
-            try {
-                // 手动解析这个JSON字符串
-                return JSON.parse(response.data);
-            } catch (e) {
-                console.error("解析摄像头列表JSON字符串失败:", e);
-                return Promise.reject(new Error("Failed to parse camera list JSON"));
+    // 构造请求头
+    const myHeaders = new Headers();
+    myHeaders.append("Authorization", "Basic YWRtaW4xMjM6QWRtaW5AMTIz");
+
+    const requestOptions = {
+        method: "GET",
+        headers: myHeaders,
+        redirect: "follow",
+    };
+
+    // 使用 fetch 发起请求，路径为代理路径
+    return fetch(`${CAMERA_API_BASE_URL}/devices?page=1&size=999&status=&id&name`, requestOptions)
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        }
-        // 如果返回的不是字符串或者为空，则返回一个空数组
-        console.warn("摄像头列表API没有返回有效的字符串数据。");
-        return [];
-    });
+            // 1. 将返回体作为纯文本处理
+            return response.text();
+        })
+        .then((result) => {
+            // 2. 检查文本是否为空
+            if (result && result.trim().length > 0) {
+                try {
+                    // 3. 手动将文本解析成JSON
+                    return JSON.parse(result);
+                } catch (e) {
+                    console.error("解析摄像头列表JSON字符串失败:", e);
+                    // 如果解析失败，抛出错误
+                    return Promise.reject(new Error("Failed to parse camera list JSON"));
+                }
+            } else {
+                // 如果返回的文本为空，返回一个空数组
+                console.warn("摄像头列表API返回了空的响应体。");
+                return [];
+            }
+        });
 };
 
 // 获取任务详情
