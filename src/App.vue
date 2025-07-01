@@ -1,17 +1,20 @@
+<template>
+  <RouterView />
+</template>
+
+<script setup>
+import { RouterView } from 'vue-router'
+</script>
+
 <style>
-/* Global Styles */
+/* 此处的样式是全局的，会应用到整个应用。
+  我们移除所有默认边距，并确保 #app 容器占满屏幕。
+*/
 html, body, #app {
-  /* Height and overflow are now controlled by the component to match the original file */
+  height: 100%;
+  width: 100%;
   margin: 0;
   padding: 0;
-}
-
-body {
-  font-family: Arial, sans-serif;
-  background-color: #f5f5f5;
-}
-
-* {
-  box-sizing: border-box;
+  overflow: hidden; /* 防止出现意外的滚动条 */
 }
 </style>

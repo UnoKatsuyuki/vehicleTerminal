@@ -1,0 +1,17 @@
+/* 我们可以在这里放置一些全局的基础样式。
+  为了避免冲突，现在我们只保留最基本的设置。
+*/
+
+:root {
+  --vt-c-white: #ffffff;
+  --vt-c-black: #181818;
+}
+
+body {
+  color: var(--vt-c-black);
+  background: var(--vt-c-white);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
