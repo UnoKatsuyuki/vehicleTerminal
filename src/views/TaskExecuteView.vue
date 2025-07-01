@@ -235,17 +235,20 @@ const pollTaskDetails = async () => {
   }
 };
 
-// 轮询缺陷列表，以发现新故障
 const pollFlawList = async () => {
   if (!currentTaskId.value) return;
   try {
     const newFlaws = await getFlawList(currentTaskId.value);
-    // 简单地替换列表，也可以做更复杂的对比来弹窗
-    if (newFlaws.length > flaws.value.length) {
-        console.log("发现新故障!");
-        // 在这里可以实现弹窗逻辑
+    flaws.value = newFlaws; // 更新UI列表
+
+    // 如果当前没有弹窗，则检查是否有新的未提示故障
+    if (!isModalVisible.value) {
+      const unshownFlaw = newFlaws.find(f => !f.shown);
+      if (unshownFlaw) {
+        console.log(`发现新的未提示故障: ${unshownFlaw.flawName}`);
+        viewFlawDetail(unshownFlaw); // 自动弹出详情
+      }
     }
-    flaws.value = newFlaws;
   } catch (error) {
     console.error("轮询缺陷列表失败:", error);
   }
@@ -253,7 +256,6 @@ const pollFlawList = async () => {
 
 const viewFlawDetail = async (flaw) => {
   try {
-    // 点击时从服务器获取最新的缺陷详情
     const flawDetails = await getFlawDetails(flaw.id);
     selectedFlaw.value = flawDetails;
     isModalVisible.value = true;
@@ -263,7 +265,24 @@ const viewFlawDetail = async (flaw) => {
   }
 };
 
-const closeFlawModal = () => {
+const markFlawAsShown = async () => {
+    if (!selectedFlaw.value) return;
+    // 仅当该缺陷之前是未提示状态时，才去更新它
+    if (selectedFlaw.value.shown === false) {
+        try {
+            selectedFlaw.value.shown = true; // 在本地立即更新
+            await updateFlaw(selectedFlaw.value); // 发送API请求，将'shown'状态持久化到后端
+            console.log(`缺陷 ${selectedFlaw.value.id} 已标记为“已提示”`);
+        } catch (error) {
+            console.error("标记缺陷为已读失败:", error);
+            // 即使失败了，也要关闭弹窗，避免卡死
+        }
+    }
+};
+
+
+const closeFlawModal = async () => {
+  await markFlawAsShown(); // 在关闭前，先标记为已读
   isModalVisible.value = false;
   selectedFlaw.value = null;
 };
@@ -271,6 +290,7 @@ const closeFlawModal = () => {
 const handleUpdateFlaw = async () => {
     if (!selectedFlaw.value) return;
     try {
+        selectedFlaw.value.shown = true; // 确认时，也要确保标记为已提示
         await updateFlaw(selectedFlaw.value);
         alert('缺陷信息更新成功!');
         closeFlawModal();
@@ -286,7 +306,6 @@ const handleCompleteTask = async () => {
         try {
             await completeTask(currentTaskId.value);
             alert('任务已完成!');
-            // 可以在此处添加跳转到任务列表页的逻辑
         } catch (error) {
             console.error("完成任务失败:", error);
             alert('完成任务失败!');
@@ -299,7 +318,6 @@ const handleTerminateTask = async () => {
         try {
             await terminateTask(currentTaskId.value);
             alert('任务已终止!');
-            // 可以在此处添加跳转到任务列表页的逻辑
         } catch (error) {
             console.error("终止任务失败:", error);
             alert('终止任务失败!');
