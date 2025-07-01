@@ -30,18 +30,33 @@ agvApiClient.interceptors.response.use(
   }
 );
 
-// 获取摄像头列表
+/**
+ * 获取摄像头设备列表
+ * @returns {Promise<Array>} 包含摄像头对象的数组
+ */
 export const getDeviceList = () => {
+    // 调用真实接口: GET /devices
     return cameraApiClient.get('/devices?page=1&size=999&status=&id&name', {
         headers: {
             'Authorization': 'Basic YWRtaW4xMjM6QWRtaW5AMTIz'
-        }
+        },
+        // 关键：告诉axios不要自动解析JSON，返回原始文本
+        transformResponse: [(data) => data]
     }).then(response => {
-        if (typeof response.data === 'string') {
-            try { return JSON.parse(response.data); }
-            catch(e) { return response.data; }
+        // 现在 response.data 就是一个纯粹的字符串
+        // 我们需要检查它是否是一个有效的字符串
+        if (typeof response.data === 'string' && response.data.trim().length > 0) {
+            try {
+                // 手动解析这个JSON字符串
+                return JSON.parse(response.data);
+            } catch (e) {
+                console.error("解析摄像头列表JSON字符串失败:", e);
+                return Promise.reject(new Error("Failed to parse camera list JSON"));
+            }
         }
-        return response.data;
+        // 如果返回的不是字符串或者为空，则返回一个空数组
+        console.warn("摄像头列表API没有返回有效的字符串数据。");
+        return [];
     });
 };
 
