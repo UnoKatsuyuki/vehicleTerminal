@@ -7,12 +7,14 @@
     <div class="main-container">
       <div class="content-area">
         <div class="video-area" id="video-container">
-          <div style="text-align: center;">
-            实时视频流显示区域<br />
-            <small style="color: #ccc;">{{ currentCamera.name }}</small>
-          </div>
-          <div class="audio-stream" style="background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 4px;">
-            音频控制面板
+          <!-- 优化：音频控制面板现在集成在右下角 -->
+          <div class="audio-panel">
+            <button class="audio-btn" @click="toggleMute">
+              <!-- 根据静音状态显示不同图标 -->
+              <svg v-if="isMuted" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            </button>
+            <input type="range" min="0" max="100" v-model="volumeLevel" class="volume-slider" @input="setVolume" />
           </div>
         </div>
 
@@ -23,7 +25,6 @@
             <div class="scale-bar">
               <div class="scale-bar-progress" :style="{ width: progressPercentage + '%' }"></div>
             </div>
-            <!-- Dynamically generate flaw markers -->
             <div
               v-for="flaw in flaws"
               :key="flaw.id"
@@ -33,7 +34,6 @@
               :title="flaw.flawName"
               @click="viewFlawDetail(flaw)"
             >📍</div>
-            <!-- AGV Marker -->
             <div
               class="scale-bar-item scale-bar-agv"
               :style="{ left: progressPercentage + '%' }"
@@ -44,6 +44,7 @@
       </div>
 
       <div class="sidebar">
+        <!-- 其他卡片保持不变 -->
         <div class="card">
           <div class="card-header">
             控制台
@@ -52,6 +53,7 @@
             <div class="control-buttons">
               <button class="btn btn-primary" @click="refreshMonitor">刷新监控</button>
               <select class="cam-selector" v-model="selectedCameraId">
+                <option v-if="cameras.length === 0" disabled>加载中...</option>
                 <option v-for="cam in cameras" :key="cam.id" :value="cam.id">{{ cam.name }}</option>
               </select>
               <button class="btn btn-success" @click="handleCompleteTask">完成巡检</button>
@@ -123,7 +125,7 @@
       </div>
     </div>
 
-    <!-- Modal Dialog for Flaw Details -->
+    <!-- Modal Dialog保持不变 -->
     <div class="modal" :class="{ show: isModalVisible }">
       <div class="modal-content">
         <div class="modal-header">
@@ -170,66 +172,85 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
-// 导入我们最终确定的API函数
-import {
-  getSystemConfig,
-  getTaskDetails,
-  getFlawList,
-  getFlawDetails,
-  updateFlaw,
-  controlAgv,
-  completeTask,
-  terminateTask
-} from '@/api/vehicle.js';
+// 导入更新后的API函数
+import { getDeviceList, getTaskDetails, getFlawList, getFlawDetails, updateFlaw, controlAgv, completeTask, terminateTask } from '@/api/vehicle.js';
 
-// --- 核心状态 ---
-const currentTaskId = ref('2'); // 假设当前任务ID为2，后续可以从路由获取
+const player = ref(null);
+const currentTaskId = ref('2');
 const taskNumber = ref('加载中...');
 const totalDistance = ref(0);
 const distance = ref(0);
 const systemTime = ref(new Date().toISOString());
-const isAgvActive = ref(false); // 默认车辆为停止状态
+const isAgvActive = ref(false);
 const flaws = ref([]);
-const player = ref(null);
-
-// --- UI状态 ---
 const isModalVisible = ref(false);
 const selectedFlaw = ref(null);
-const selectedCameraId = ref('cam1');
-const cameras = ref([ // 默认摄像头列表，将被API数据覆盖
-    { id: 'cam1', name: '摄像头1', url: '' },
-    { id: 'cam2', name: '摄像头2', url: '' },
-    { id: 'cam3', name: '摄像头3', url: '' },
-    { id: 'cam4', name: '摄像头4', url: '' },
-]);
+const selectedCameraId = ref(null); // 默认不选中任何摄像头
+const cameras = ref([]); // 默认摄像头列表为空，将由API填充
+const isMuted = ref(true); // 音频默认静音
+const volumeLevel = ref(50); // 默认音量
 
-// --- 定时器 ---
 let taskPollInterval = null;
 let flawPollInterval = null;
 
-// --- 计算属性 ---
-const progressPercentage = computed(() => {
-  if (totalDistance.value === 0) return 0;
-  return Math.min((distance.value / totalDistance.value) * 100, 100);
-});
-
+const progressPercentage = computed(() => totalDistance.value === 0 ? 0 : Math.min((distance.value / totalDistance.value) * 100, 100));
 const formattedSystemTime = computed(() => new Date(systemTime.value).toLocaleString('zh-CN'));
 const confirmedFlawCount = computed(() => flaws.value.filter(f => f.confirmed).length);
 const unconfirmedFlawCount = computed(() => flaws.value.filter(f => !f.confirmed).length);
 const currentCamera = computed(() => cameras.value.find(c => c.id === selectedCameraId.value) || {});
 
-// --- 方法 ---
+const initPlayer = (videoUrl) => {
+  if (typeof window.EasyPlayer === 'undefined' || !window.EasyPlayer) {
+    console.error("EasyPlayer.js 脚本尚未加载或加载失败!");
+    return;
+  }
+  if (player.value) { player.value.destroy(); player.value = null; }
+  if (!videoUrl) { console.warn("视频地址为空，无法初始化播放器。"); return; }
+  console.log(`正在初始化播放器，地址: ${videoUrl}`);
+  player.value = new window.EasyPlayer.Player({
+    el: '#video-container', url: videoUrl, autoplay: true, live: true,
+    decode_type: 'auto', show_audio_bar: false,
+  });
+};
 
-// 轮询任务详情，以更新车辆位置和状态
+// **音频控制方法**
+const toggleMute = () => {
+  isMuted.value = !isMuted.value;
+  if (player.value) {
+    isMuted.value ? player.value.mute() : player.value.unmute();
+  }
+};
+
+const setVolume = () => {
+  if (player.value) {
+    player.value.setVolume(volumeLevel.value / 100);
+    // 如果之前是静音，拖动音量条则自动取消静音
+    if (isMuted.value && volumeLevel.value > 0) {
+        isMuted.value = false;
+    } else if (!isMuted.value && volumeLevel.value == 0) {
+        isMuted.value = true;
+    }
+  }
+};
+
+const refreshMonitor = () => {
+    console.log("手动刷新监控...");
+    const cam = currentCamera.value;
+    if (cam && cam.url) { initPlayer(cam.url); }
+    else { console.error("当前摄像头没有有效的URL，无法刷新。"); }
+};
+
 const pollTaskDetails = async () => {
   if (!currentTaskId.value) return;
   try {
     const taskData = await getTaskDetails(currentTaskId.value);
-    taskNumber.value = taskData.taskNumber;
-    totalDistance.value = taskData.totalDistance;
-    distance.value = taskData.currentDistance;
-    systemTime.value = taskData.updateTime; // 假设任务对象包含更新时间
-    isAgvActive.value = taskData.status === '1'; // 假设'1'为巡视中
+    if (taskData) {
+      taskNumber.value = taskData.taskNumber;
+      totalDistance.value = taskData.totalDistance;
+      distance.value = taskData.currentDistance;
+      systemTime.value = taskData.updateTime;
+      isAgvActive.value = taskData.status === '1';
+    }
   } catch (error) {
     console.error("轮询任务详情失败:", error);
   }
@@ -239,15 +260,15 @@ const pollFlawList = async () => {
   if (!currentTaskId.value) return;
   try {
     const newFlaws = await getFlawList(currentTaskId.value);
-    flaws.value = newFlaws; // 更新UI列表
-
-    // 如果当前没有弹窗，则检查是否有新的未提示故障
-    if (!isModalVisible.value) {
-      const unshownFlaw = newFlaws.find(f => !f.shown);
-      if (unshownFlaw) {
-        console.log(`发现新的未提示故障: ${unshownFlaw.flawName}`);
-        viewFlawDetail(unshownFlaw); // 自动弹出详情
-      }
+    if (newFlaws && Array.isArray(newFlaws)) {
+        flaws.value = newFlaws;
+        if (!isModalVisible.value) {
+            const unshownFlaw = newFlaws.find(f => !f.shown);
+            if (unshownFlaw) {
+                console.log(`发现新的未提示故障: ${unshownFlaw.flawName}`);
+                viewFlawDetail(unshownFlaw);
+            }
+        }
     }
   } catch (error) {
     console.error("轮询缺陷列表失败:", error);
@@ -257,32 +278,31 @@ const pollFlawList = async () => {
 const viewFlawDetail = async (flaw) => {
   try {
     const flawDetails = await getFlawDetails(flaw.id);
-    selectedFlaw.value = flawDetails;
-    isModalVisible.value = true;
+    if(flawDetails){
+        selectedFlaw.value = flawDetails;
+        isModalVisible.value = true;
+    }
   } catch (error) {
     console.error("获取缺陷详情失败:", error);
-    alert('获取缺陷详情失败!');
+    console.error('获取缺陷详情失败!');
   }
 };
 
 const markFlawAsShown = async () => {
     if (!selectedFlaw.value) return;
-    // 仅当该缺陷之前是未提示状态时，才去更新它
     if (selectedFlaw.value.shown === false) {
         try {
-            selectedFlaw.value.shown = true; // 在本地立即更新
-            await updateFlaw(selectedFlaw.value); // 发送API请求，将'shown'状态持久化到后端
+            selectedFlaw.value.shown = true;
+            await updateFlaw(selectedFlaw.value);
             console.log(`缺陷 ${selectedFlaw.value.id} 已标记为“已提示”`);
         } catch (error) {
             console.error("标记缺陷为已读失败:", error);
-            // 即使失败了，也要关闭弹窗，避免卡死
         }
     }
 };
 
-
 const closeFlawModal = async () => {
-  await markFlawAsShown(); // 在关闭前，先标记为已读
+  await markFlawAsShown();
   isModalVisible.value = false;
   selectedFlaw.value = null;
 };
@@ -290,141 +310,95 @@ const closeFlawModal = async () => {
 const handleUpdateFlaw = async () => {
     if (!selectedFlaw.value) return;
     try {
-        selectedFlaw.value.shown = true; // 确认时，也要确保标记为已提示
+        selectedFlaw.value.shown = true;
         await updateFlaw(selectedFlaw.value);
-        alert('缺陷信息更新成功!');
+        console.log('缺陷信息更新成功!');
         closeFlawModal();
-        pollFlawList(); // 重新获取列表以刷新状态
+        pollFlawList();
     } catch(error) {
         console.error("更新缺陷失败:", error);
-        alert('更新缺陷失败!');
+        console.error('更新缺陷失败!');
     }
 };
 
 const handleCompleteTask = async () => {
-    if (confirm('您确定要完成当前巡检任务吗?')) {
+    const confirmed = window.prompt("您确定要完成当前巡检任务吗? 请输入 'yes' 确认。");
+    if (confirmed === 'yes') {
         try {
             await completeTask(currentTaskId.value);
-            alert('任务已完成!');
+            console.log('任务已完成!');
         } catch (error) {
             console.error("完成任务失败:", error);
-            alert('完成任务失败!');
         }
     }
 };
 
 const handleTerminateTask = async () => {
-    if (confirm('您确定要终止当前巡检任务吗? 此操作不可恢复!')) {
+    const confirmed = window.prompt("您确定要终止当前巡检任务吗? 此操作不可恢复! 请输入 'yes' 确认。");
+    if (confirmed === 'yes') {
         try {
             await terminateTask(currentTaskId.value);
-            alert('任务已终止!');
+            console.log('任务已终止!');
         } catch (error) {
             console.error("终止任务失败:", error);
-            alert('终止任务失败!');
         }
     }
 };
 
-const refreshMonitor = () => {
-    console.log("刷新监控...");
-    // 视频播放器相关的刷新逻辑将在这里实现
-};
-
-// --- 生命周期钩子 ---
 onMounted(async () => {
-  // 1. 获取系统配置（摄像头等）
   try {
-    const config = await getSystemConfig();
-    cameras.value = [
-        { id: 'cam1', name: '摄像头1', url: config.cam1 },
-        { id: 'cam2', name: '摄像头2', url: config.cam2 },
-        { id: 'cam3', name: '摄像头3', url: config.cam3 },
-        { id: 'cam4', name: '摄像头4', url: config.cam4 },
-    ];
-    // **获取配置后，立即初始化第一个摄像头的播放器**
-    initPlayer(cameras.value[0]?.url);
+    const deviceData = await getDeviceList();
+    // **改动点：更稳健地解析摄像头数据**
+    // 检查 deviceData 和 deviceData.Devices
+    const deviceList = deviceData?.Devices || (Array.isArray(deviceData) ? deviceData : []);
+
+    if (deviceList.length > 0) {
+        cameras.value = deviceList.map(device => ({
+            id: device.ID,
+            name: device.Name,
+            // **改动点：使用代理路径而不是硬编码IP**
+            url: `/live/${device.ID}_01.flv`
+        }));
+
+        if (cameras.value.length > 0) {
+            selectedCameraId.value = cameras.value[0].id;
+            // Watcher会自动初始化播放器
+        }
+    } else {
+        console.warn("从API获取到的摄像头列表为空。");
+    }
   } catch (error) {
-    console.error("获取系统配置失败:", error);
+    console.error("获取摄像头列表失败:", error);
   }
 
-  // 2. 立即执行一次轮询以快速加载初始数据
   await pollTaskDetails();
   await pollFlawList();
-
-  // 3. 启动定时轮询
   taskPollInterval = setInterval(pollTaskDetails, 3000);
   flawPollInterval = setInterval(pollFlawList, 10000);
 });
 
 onUnmounted(() => {
-  // 组件销毁时，销毁播放器并清除定时器
-  if (player.value) {
-    player.value.destroy();
-  }
+  if (player.value) { player.value.destroy(); }
   clearInterval(taskPollInterval);
   clearInterval(flawPollInterval);
 });
 
-// --- 视频播放器相关方法 ---
-const initPlayer = (videoUrl) => {
-  // 销毁旧的播放器实例
-  if (player.value) {
-    player.value.destroy();
-    player.value = null;
-  }
-
-  // 如果没有视频地址，则不初始化
-  if (!videoUrl) {
-    console.warn("视频地址为空，无法初始化播放器。");
-    return;
-  }
-
-  console.log(`正在初始化播放器，地址: ${videoUrl}`);
-
-  // 创建新的EasyPlayer实例
-  player.value = new window.EasyPlayer.Player({
-    el: '#video-container', // 挂载点
-    url: videoUrl,          // 视频流地址
-    autoplay: true,         // 自动播放
-    live: true,             // 直播模式
-    decode_type: 'auto',    // 自动选择解码方式
-    show_audio_bar: false,  // 不显示音频条
-  });
-};
-
-const refreshMonitor = () => {
-    console.log("手动刷新监控...");
-    const cam = currentCamera.value;
-    if (cam && cam.url) {
-        initPlayer(cam.url);
-    } else {
-        console.error("当前摄像头没有有效的URL，无法刷新。");
-    }
-};
-
-// --- 监视器 ---
 watch(isAgvActive, async (newValue, oldValue) => {
-  // 只有在值真的发生变化时才发送API请求
   if (newValue !== oldValue) {
     try {
       await controlAgv(newValue);
       console.log(`发送AGV控制命令: ${newValue ? '前进' : '停止'}`);
     } catch (error) {
       console.error("发送AGV控制命令失败:", error);
-      alert('控制车辆失败!');
-      // 如果API调用失败，将开关恢复到之前的状态
+      console.error('控制车辆失败!');
       isAgvActive.value = oldValue;
     }
   }
 });
 
-// **新增监视器：监视摄像头选择的变化**
 watch(selectedCameraId, (newId) => {
     const newCam = cameras.value.find(c => c.id === newId);
-    if (newCam) {
-        // 当用户切换摄像头时，使用新的URL重新初始化播放器
-        initPlayer(newCam.url);
-    }
+    if (newCam) { initPlayer(newCam.url); }
 });
 </script>
 
@@ -811,4 +785,61 @@ input:checked + .slider:before {
     border-radius: 4px;
     font-size: 14px;
 }
+
+.audio-panel {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    background: rgba(25, 25, 25, 0.75);
+    border-radius: 8px;
+    padding: 10px 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.audio-btn {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+
+.volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 120px;
+    height: 4px;
+    background: #555;
+    outline: none;
+    border-radius: 2px;
+    transition: opacity 0.2s;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    cursor: pointer;
+    border-radius: 50%;
+    border: none;
+}
+
 </style>
