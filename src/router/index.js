@@ -1,23 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+// 1. Import your new component
+import TaskExecuteView from '../views/TaskExecuteView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      // 2. Set this component as the main route
       path: '/',
-      name: 'home',
-      component: HomeView,
+      name: 'task-execute',
+      component: TaskExecuteView
     },
-    {
-      path: '/about',
-      name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue'),
-    },
-  ],
+   
+  ]
 })
 
 export default router
