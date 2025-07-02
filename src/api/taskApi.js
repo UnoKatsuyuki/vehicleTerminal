@@ -98,6 +98,17 @@ export function listFlaw(params) {
   });
 }
 
+/**
+ * 【新增】更新单个缺陷
+ * @param {object} data - 缺陷对象 AgvFlaw
+ */
+export function updateFlaw(data) {
+  return request({
+    url: '/agv/flaw',
+    method: 'put',
+    data: data
+  });
+}
 
 /**
  * 批量更新缺陷
@@ -106,7 +117,7 @@ export function listFlaw(params) {
 export function batchUpdateFlaw(data) {
   return request({
     url: '/agv/flaw/batch',
-    method: 'put',
+    method: 'post',
     data: data
   });
 }

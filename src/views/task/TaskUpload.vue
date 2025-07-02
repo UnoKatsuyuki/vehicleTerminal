@@ -75,7 +75,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { getTask, preUploadTask, uploadTask, batchUpdateFlaw } from '@/api/taskApi.js';
+import { getTask, preUploadTask, uploadTask, updateFlaw } from '@/api/taskApi.js';
 import { ElMessage } from 'element-plus';
 import { ArrowLeft, CircleCheck, Loading, CircleClose } from '@element-plus/icons-vue';
 
@@ -119,9 +119,16 @@ async function startUploadProcess() {
     if (updatesJson) {
       const updates = JSON.parse(updatesJson);
       if (updates.length > 0) {
-        uploadStatusText.value = '正在提交故障确认结果...';
-        await batchUpdateFlaw(updates);
-        ElMessage.success('故障确认结果已同步');
+        uploadStatusText.value = '正在保存复盘结果...';
+        try {
+          const updatePromises = updates.map(flaw => updateFlaw(flaw));
+          await Promise.all(updatePromises);
+
+          ElMessage.success('复盘结果保存成功');
+        } catch (error) {
+          console.error('保存复盘结果失败:', error);
+          ElMessage.error("保存复盘结果失败，请重试。");
+        }
       }
       sessionStorage.removeItem('flawUpdates');
     }

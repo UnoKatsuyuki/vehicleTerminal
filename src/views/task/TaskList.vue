@@ -45,7 +45,7 @@
 
       <!-- 4. 数据表格 -->
       <div class="table-wrapper">
-        <el-table v-loading="loading" :data="taskList" stripe @row-click="handleTaskClick">
+        <el-table v-loading="loading" :data="taskList" stripe @row-click="handleTaskClick" row-key="id">
           <el-table-column type="index" label="序号" width="60" align="center" />
           <el-table-column label="任务编号" prop="taskCode" width="200">
             <template #default="scope">
@@ -70,7 +70,7 @@
               <el-button link type="primary" icon="DocumentChecked" @click.stop="handleReview(scope.row)" v-if="scope.row.taskStatus === '待上传'">复盘</el-button>
               <el-button link type="primary" icon="View" @click.stop="handleReview(scope.row)" v-if="scope.row.taskStatus === '已完成'">查看报告</el-button>
               <el-button link type="primary" icon="Edit" @click.stop="handleEdit(scope.row)" v-if="scope.row.taskStatus === '待巡视'">修改</el-button>
-              <el-button link type="danger" icon="Delete" @click.stop="handleDelete(scope.row)" v-if="scope.row.taskStatus === '待巡视'">删除</el-button>
+              <el-button link type="danger" icon="Delete" @click.stop="handleDelete(scope.row.id, scope.row.taskCode)" v-if="scope.row.taskStatus === '待巡视'">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -101,7 +101,23 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="任务编号" prop="taskCode">
-                <el-input v-model="form.taskCode" placeholder="请输入任务编号" :disabled="!!form.id" />
+                <el-input
+                  v-model="form.taskCode"
+                  :placeholder="taskCodeSelection === 'auto' ? '' : '请输入自定义编号'"
+                  :disabled="!!form.id"
+                  class="input-with-select"
+                >
+                  <template #prepend>
+                    <el-select
+                      v-model="taskCodeSelection"
+                      :disabled="!!form.id"
+                      style="width: 110px"
+                    >
+                      <el-option label="自动生成" value="auto" />
+                      <el-option label="自定义" value="custom" />
+                    </el-select>
+                  </template>
+                </el-input>
               </el-form-item>
             </el-col>
           </el-row>
@@ -145,9 +161,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { listTask, addTask, updateTask, delTask } from '@/api/taskApi.js';
+import { listTask, addTask, updateTask, delTask, getTask } from '@/api/taskApi.js';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
 const router = useRouter();
@@ -167,6 +183,7 @@ const queryParams = reactive({
 });
 
 const statusOptions = ref([
+  { value: '', label: '全部' },
   { value: '待巡视', label: '待巡视' },
   { value: '巡视中', label: '巡视中' },
   { value: '待上传', label: '待上传' },
@@ -190,8 +207,44 @@ const rules = reactive({
 const queryFormRef = ref(null);
 const taskFormRef = ref(null);
 
+// --- 新增：任务编号生成模式 ---
+const taskCodeSelection = ref('auto');
+
+// --- 任务编号占位符和自动完成 ---
+const taskCodePlaceholder = computed(() => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `TASK-${year}${month}${day}`;
+});
+
+// --- 监听任务编号模式变化 ---
+watch(taskCodeSelection, (newValue) => {
+  // 如果是编辑模式，则不执行任何操作
+  if (form.value.id) {
+    return;
+  }
+  if (newValue === 'auto') {
+    form.value.taskCode = taskCodePlaceholder.value;
+  } else {
+    form.value.taskCode = '';
+  }
+});
+
 // --- 方法定义 ---
 onMounted(() => {
+  // 【新】页面加载时，安全地恢复页码
+  const savedPageNum = sessionStorage.getItem('taskListPageNum');
+  if (savedPageNum) {
+    const pageNum = parseInt(savedPageNum, 10);
+    if (!isNaN(pageNum) && pageNum > 0) {
+      queryParams.pageNum = pageNum;
+    }
+    // 立即清除，防止刷新页面时依然停留在旧页码
+    sessionStorage.removeItem('taskListPageNum');
+  }
+
   getList();
 });
 
@@ -231,46 +284,68 @@ function handleQuery() {
 
 // 重置按钮操作
 function resetQuery() {
+  // 【新】重置时清除页码记忆
+  sessionStorage.removeItem('taskListPageNum');
   queryFormRef.value.resetFields();
   handleQuery();
 }
 
-// 表单重置
+// --- 【重构】表单重置 ---
 function resetForm() {
-  form.value = {
-    id: undefined,
-    taskCode: undefined,
-    taskName: undefined,
-    startPos: undefined,
-    taskTrip: 0,
-    creator: undefined,
-    executor: undefined,
-    remark: undefined
-  };
+  form.value = {};
   if (taskFormRef.value) {
+    // 清除element-plus表单的校验信息
     taskFormRef.value.resetFields();
   }
 }
 
-// 取消按钮
+// --- 【重构】对话框取消按钮 ---
 function cancel() {
   dialog.open = false;
   resetForm();
 }
 
-// 新增按钮操作
+// 新增任务按钮操作
 function handleCreate() {
   resetForm();
+  taskCodeSelection.value = 'auto'; // 恢复默认选项
+  form.value.taskCode = taskCodePlaceholder.value; // 设置初始值
   dialog.open = true;
   dialog.title = "新增任务";
 }
 
 // 修改按钮操作
 function handleEdit(row) {
-  resetForm();
-  form.value = JSON.parse(JSON.stringify(row));
-  dialog.open = true;
-  dialog.title = "修改任务";
+  resetForm(); // 先重置表单
+  getTask(row.id).then(response => {
+    form.value = response.data;
+    taskCodeSelection.value = 'custom'; // 编辑时模式固定为自定义
+    dialog.open = true;
+    dialog.title = "修改任务";
+  });
+}
+
+// --- 【最终修复】删除按钮操作 ---
+function handleDelete(id, taskCode) {
+  // 【调试】打印入参，检查数据是否正确
+  console.log(`[ handleDelete ] raw args: id=${id}, taskCode=${taskCode}`);
+
+  ElMessageBox.confirm(
+    `是否确认删除任务编号为"${taskCode}"的数据项?`,
+    "系统提示",
+    {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    }
+  ).then(() => {
+    return delTask(id);
+  }).then(() => {
+    ElMessage.success("删除成功");
+    getList(); // 重新加载列表
+  }).catch(() => {
+    // 用户点击了取消
+  });
 }
 
 // 提交按钮
@@ -287,26 +362,10 @@ async function submitForm() {
   getList();
 }
 
-// 删除按钮操作
-async function handleDelete(row) {
-  await ElMessageBox.confirm('是否确认删除任务编号为"' + row.taskCode + '"的数据项？', "系统提示", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-    type: "warning",
-  });
-  await delTask(row.id);
-  getList();
-  ElMessage.success("删除成功");
-}
-
 // 复盘/查看报告 按钮操作
 function handleReview(row) {
+  sessionStorage.setItem('taskListPageNum', queryParams.pageNum);
   router.push({ name: 'task-review', params: { id: row.id } });
-}
-
-// 上传按钮操作
-function handleUpload(row) {
-  router.push({ name: 'task-upload', params: { id: row.id } });
 }
 
 // 开始/继续巡视 按钮操作
@@ -316,11 +375,12 @@ function handleStartPatrol(row) {
 
 // 根据任务状态，决定点击整行时的行为
 function handleTaskClick(row) {
-  const status = row.taskStatus;
-  if (status === '待巡视' || status === '巡视中') {
-    handleStartPatrol(row);
-  } else if (status === '待上传' || status === '已完成') {
+  // 直接调用 handleReview 来处理跳转
+  if (row.taskStatus === '待上传' || row.taskStatus === '已完成') {
     handleReview(row);
+  } else {
+    // 对于其他状态，可以只高亮而不跳转，或者执行其他操作
+    console.log("Clicked row:", row);
   }
 }
 
