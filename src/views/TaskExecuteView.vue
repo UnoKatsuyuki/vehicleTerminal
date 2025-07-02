@@ -197,15 +197,21 @@ const currentCamera = computed(() => cameras.value.find(c => c.id === selectedCa
 
 const initPlayer = (container, deviceId) => {
   if (!container || !deviceId) return;
+  const streamUrl = getVideoStreamUrl(deviceId);
+  console.log('视频流URL:', streamUrl);
   console.log("container",container);
   console.log("deviceId",deviceId);
+
   if (player.value) {
-    player.value.destroy();
-    player.value = null;
+    // player.value.destroy();
+    // player.value = null;
+    console.log(`切换视频流到: ${streamUrl}`);
+    player.value.play(streamUrl).catch(error => {
+      console.error('视频切换失败:', error);
+    });
+    return; // 完成切换，退出函数
   }
-  container.innerHTML = ''; 
-  let streamUrl = getVideoStreamUrl(deviceId);
-  console.log('视频流URL:', streamUrl);
+  
 
   const easyplayer = new EasyPlayerPro(container, {
     libPath: "/js/",
@@ -234,6 +240,10 @@ const initPlayer = (container, deviceId) => {
 
 const refreshMonitor = () => {
     console.log("手动刷新监控...");
+    if (player.value) {
+        player.value.destroy();
+        player.value = null;
+    }
     const cam = currentCamera.value;
     console.log("当前摄像头信息:", cam);
     console.log("摄像头ID:", cam.id);
