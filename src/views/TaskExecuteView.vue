@@ -346,36 +346,47 @@ const handleTerminateTask = async () => {
 };
 
 onMounted(async () => {
-  try {
-    const deviceData = await getDeviceList();
-    // **改动点：更稳健地解析摄像头数据**
-    // 检查 deviceData 和 deviceData.Devices
-    const deviceList = deviceData?.Devices || (Array.isArray(deviceData) ? deviceData : []);
+  await Promise.allSettled([
+    getDeviceList().then(deviceData => {
+      console.log("从/easy-api/devices获取到的原始数据:", deviceData);
+      
+      // =================================================================
+      // **改动点：根据您提供的日志，精确解析数据结构**
+      // =================================================================
+      let deviceList = [];
+      // 直接检查 `deviceData.items` 是否是一个数组
+      if (deviceData && Array.isArray(deviceData.items)) {
+        deviceList = deviceData.items;
+      } else {
+        console.warn("未能从 `deviceData.items` 中找到摄像头列表，请检查日志中返回的完整数据结构。");
+      }
+      
+      if (deviceList.length > 0) {
+          console.log("成功解析到摄像头列表:", deviceList);
+          cameras.value = deviceList.map(device => ({
+              // 使用小写的 `id` 和 `name` (如果name不存在，则使用id作为备用名称)
+              id: device.id, 
+              name: device.name || `摄像头 ${device.id}`, 
+              url: `/live/${device.id}_01.flv`
+          }));
+          if (cameras.value.length > 0) {
+              selectedCameraId.value = cameras.value[0].id;
+          }
+      } else {
+          console.warn("解析后的摄像头列表为空。");
+      }
+    }).catch(error => {
+      console.error("获取摄像头列表失败:", error);
+    }),
+    pollTaskDetails(),
+    pollFlawList()
+  ]);
 
-    if (deviceList.length > 0) {
-        cameras.value = deviceList.map(device => ({
-            id: device.ID,
-            name: device.Name,
-            // **改动点：使用代理路径而不是硬编码IP**
-            url: `/live/${device.ID}_01.flv`
-        }));
-
-        if (cameras.value.length > 0) {
-            selectedCameraId.value = cameras.value[0].id;
-            // Watcher会自动初始化播放器
-        }
-    } else {
-        console.warn("从API获取到的摄像头列表为空。");
-    }
-  } catch (error) {
-    console.error("获取摄像头列表失败:", error);
-  }
-
-  await pollTaskDetails();
-  await pollFlawList();
+  console.log("初始数据加载完成，启动定时轮询...");
   taskPollInterval = setInterval(pollTaskDetails, 3000);
   flawPollInterval = setInterval(pollFlawList, 10000);
 });
+
 
 onUnmounted(() => {
   if (player.value) { player.value.destroy(); }
