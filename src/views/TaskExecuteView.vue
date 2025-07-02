@@ -7,15 +7,7 @@
     <div class="main-container">
       <div class="content-area">
         <div class="video-area" id="video-container">
-          <!-- 优化：音频控制面板现在集成在右下角 -->
-          <div class="audio-panel">
-            <button class="audio-btn" @click="toggleMute">
-              <!-- 根据静音状态显示不同图标 -->
-              <svg v-if="isMuted" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-            </button>
-            <input type="range" min="0" max="100" v-model="volumeLevel" class="volume-slider" @input="setVolume" />
-          </div>
+          
         </div>
 
         <div class="scale-bar-area">
@@ -172,9 +164,12 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
-// 导入更新后的API函数
-import { getDeviceList, getTaskDetails, getFlawList, getFlawDetails, updateFlaw, controlAgv, completeTask, terminateTask } from '@/api/vehicle.js';
-
+// **改动点：导入新的辅助函数**
+import { 
+  getDeviceList, getTaskDetails, getFlawList, getFlawDetails, 
+  updateFlaw, controlAgv, completeTask, terminateTask,
+  getVideoStreamUrl 
+} from '@/api/vehicle.js';
 const player = ref(null);
 const currentTaskId = ref('2');
 const taskNumber = ref('加载中...');
@@ -199,44 +194,51 @@ const confirmedFlawCount = computed(() => flaws.value.filter(f => f.confirmed).l
 const unconfirmedFlawCount = computed(() => flaws.value.filter(f => !f.confirmed).length);
 const currentCamera = computed(() => cameras.value.find(c => c.id === selectedCameraId.value) || {});
 
-const initPlayer = (videoUrl) => {
-  if (typeof window.EasyPlayer === 'undefined' || !window.EasyPlayer) {
-    console.error("EasyPlayer.js 脚本尚未加载或加载失败!");
-    return;
+
+const initPlayer = (container, deviceId) => {
+  if (!container || !deviceId) return;
+  console.log("container",container);
+  console.log("deviceId",deviceId);
+  if (player.value) {
+    player.value.destroy();
+    player.value = null;
   }
-  if (player.value) { player.value.destroy(); player.value = null; }
-  if (!videoUrl) { console.warn("视频地址为空，无法初始化播放器。"); return; }
-  console.log(`正在初始化播放器，地址: ${videoUrl}`);
-  player.value = new window.EasyPlayer.Player({
-    el: '#video-container', url: videoUrl, autoplay: true, live: true,
-    decode_type: 'auto', show_audio_bar: false,
+  container.innerHTML = ''; 
+  let streamUrl = getVideoStreamUrl(deviceId);
+  console.log('视频流URL:', streamUrl);
+
+  const easyplayer = new EasyPlayerPro(container, {
+    libPath: "/js/",
+    isLive: true,
+    bufferTime: 0.2,
+    stretch: false,
+    MSE: false,
+    WCS: false,
+    hasAudio: true,
+    watermark: {text: {content: 'easyplayer-pro'}, right: 10, top: 10},
   });
-};
 
-// **音频控制方法**
-const toggleMute = () => {
-  isMuted.value = !isMuted.value;
-  if (player.value) {
-    isMuted.value ? player.value.mute() : player.value.unmute();
-  }
-};
+  player.value = easyplayer;
 
-const setVolume = () => {
-  if (player.value) {
-    player.value.setVolume(volumeLevel.value / 100);
-    // 如果之前是静音，拖动音量条则自动取消静音
-    if (isMuted.value && volumeLevel.value > 0) {
-        isMuted.value = false;
-    } else if (!isMuted.value && volumeLevel.value == 0) {
-        isMuted.value = true;
+  setTimeout(() => {
+    if (streamUrl && player.value) {
+      player.value.play(streamUrl).then(() => {
+        console.log('视频播放成功');
+      }).catch((error) => {
+        console.error('视频播放失败:', error);
+        ElMessage.error('视频播放失败！');
+      });
     }
-  }
+  }, 100);
 };
 
 const refreshMonitor = () => {
     console.log("手动刷新监控...");
     const cam = currentCamera.value;
-    if (cam && cam.url) { initPlayer(cam.url); }
+    console.log("当前摄像头信息:", cam);
+    console.log("摄像头ID:", cam.id);
+    console.log("摄像头URL:", cam.url);
+    if (cam && cam.url) { initPlayer(document.getElementById('video-container'),cam.id); }
     else { console.error("当前摄像头没有有效的URL，无法刷新。"); }
 };
 
@@ -349,25 +351,20 @@ onMounted(async () => {
   await Promise.allSettled([
     getDeviceList().then(deviceData => {
       console.log("从/easy-api/devices获取到的原始数据:", deviceData);
-      
-      // =================================================================
-      // **改动点：根据您提供的日志，精确解析数据结构**
-      // =================================================================
       let deviceList = [];
-      // 直接检查 `deviceData.items` 是否是一个数组
       if (deviceData && Array.isArray(deviceData.items)) {
         deviceList = deviceData.items;
       } else {
-        console.warn("未能从 `deviceData.items` 中找到摄像头列表，请检查日志中返回的完整数据结构。");
+        console.warn("未能从 `deviceData.items` 中找到摄像头列表。");
       }
       
       if (deviceList.length > 0) {
           console.log("成功解析到摄像头列表:", deviceList);
           cameras.value = deviceList.map(device => ({
-              // 使用小写的 `id` 和 `name` (如果name不存在，则使用id作为备用名称)
               id: device.id, 
               name: device.name || `摄像头 ${device.id}`, 
-              url: `/live/${device.id}_01.flv`
+              // **改动点：调用辅助函数来生成URL**
+              url: getVideoStreamUrl(device.id) 
           }));
           if (cameras.value.length > 0) {
               selectedCameraId.value = cameras.value[0].id;
@@ -409,7 +406,8 @@ watch(isAgvActive, async (newValue, oldValue) => {
 
 watch(selectedCameraId, (newId) => {
     const newCam = cameras.value.find(c => c.id === newId);
-    if (newCam) { initPlayer(newCam.url); }
+    console.log("selectedCameraId",selectedCameraId.value);
+    if (newCam) { initPlayer(document.getElementById('video-container'), selectedCameraId.value); }
 });
 </script>
 
