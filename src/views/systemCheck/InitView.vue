@@ -23,8 +23,7 @@
       </div>
 
       <div class="operate-btn-group">
-        <!-- 【核心修复】将 icon="Setting" 修改为 :icon="Setting" -->
-        <el-button circle :icon="Setting" @click="openSettings" title="设置" />
+       <el-button circle :icon="Setting" @click="openSettings" title="设置" />
         <el-button
           type="success"
           size="large"
@@ -43,21 +42,6 @@
         </el-button>
       </div>
     </div>
-
-    <el-dialog v-model="showSettingsModal" title="系统设置" width="600px">
-      <div style="color: #666; text-align: center; padding: 40px;">
-        <p>[此处为系统设置(SettingsView)组件内容]</p>
-        <p style="font-size: 14px; margin-top: 10px;">
-          可在此配置车辆IP、端口、摄像头地址及账号密码等。
-        </p>
-      </div>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="closeSettings">取消</el-button>
-          <el-button type="primary" @click="saveSettings">保存</el-button>
-        </span>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -112,8 +96,8 @@ const runAllChecks = () => {
   });
 };
 
-const openSettings = () => showSettingsModal.value = true;
-const closeSettings = () => showSettingsModal.value = false;
+const openSettings = () =>{router.push({ name: 'settings' });}
+
 
 const saveSettings = () => {
   ElMessage.success("设置已保存，将重新执行自检。");

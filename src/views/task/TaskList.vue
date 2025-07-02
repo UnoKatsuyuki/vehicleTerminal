@@ -370,17 +370,18 @@ function handleReview(row) {
 
 // 开始/继续巡视 按钮操作
 function handleStartPatrol(row) {
-  ElMessage.info(`巡视功能待开发，任务ID: ${row.id}`);
+  sessionStorage.setItem('taskListPageNum', queryParams.pageNum);
+  router.push({ name: 'task-execute', params: { id: row.id } });
 }
+
 
 // 根据任务状态，决定点击整行时的行为
 function handleTaskClick(row) {
-  // 直接调用 handleReview 来处理跳转
-  if (row.taskStatus === '待上传' || row.taskStatus === '已完成') {
+  const status = row.taskStatus;
+  if (status === '待巡视' || status === '巡视中') {
+    handleStartPatrol(row);
+  } else if (status === '待上传' || status === '已完成') {
     handleReview(row);
-  } else {
-    // 对于其他状态，可以只高亮而不跳转，或者执行其他操作
-    console.log("Clicked row:", row);
   }
 }
 
