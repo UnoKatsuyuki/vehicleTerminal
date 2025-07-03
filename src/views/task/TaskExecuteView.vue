@@ -36,10 +36,48 @@
       </div>
 
       <div class="sidebar">
-        <!-- 其他卡片保持不变 -->
+        <!-- =================================================== -->
+        <!-- **改动点 1：新增独立的AGV移动控制卡片** -->
+        <!-- =================================================== -->
         <div class="card">
           <div class="card-header">
-            控制台
+            <span>AGV 移动控制</span>
+            <div class="control-lock">
+              <span class="lock-label">{{ isLocked ? '已锁定' : '已解锁' }}</span>
+              <button class="lock-btn" @click="isLocked = !isLocked">
+                <svg v-if="isLocked" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f56c6c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#67c23a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 5-5 4.93 4.93 0 0 1 2.78.94"></path></svg>
+              </button>
+            </div>
+          </div>
+          <div class="card-body agv-console">
+            <div class="status-grid heartbeat-panel">
+              <div class="status-item">
+                <span class="label">心跳状态</span>
+                <span class="value" :class="heartbeatStatusClass">{{ heartbeatStatusText }}</span>
+              </div>
+            </div>
+            <div class="control-grid" :class="{ locked: isLocked }">
+              <button class="control-btn" @click="handleMove('backward')" :disabled="isLocked">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                <span>后退</span>
+              </button>
+              <button class="control-btn stop" @click="handleMove('stop')" :disabled="isLocked">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><rect x="9" y="9" width="6" height="6"></rect></svg>
+                <span>停止</span>
+              </button>
+              <button class="control-btn" @click="handleMove('forward')" :disabled="isLocked">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                <span>前进</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- **原有的“控制台”卡片，现在只负责视频和任务操作** -->
+        <div class="card">
+          <div class="card-header">
+            <span>视频与任务</span>
           </div>
           <div class="card-body">
             <div class="control-buttons">
@@ -167,7 +205,8 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 // **改动点：导入新的辅助函数**
 import { 
   getDeviceList, getTaskDetails, getFlawList, getFlawDetails, 
-  updateFlaw, controlAgv, completeTask, terminateTask,
+  updateFlaw, agvForward, agvStop, agvBackward, getAgvHeartbeat,
+  completeTask, terminateTask,
   getVideoStreamUrl 
 } from '@/api/vehicle.js';
 const player = ref(null);
@@ -184,7 +223,11 @@ const selectedCameraId = ref(null); // 默认不选中任何摄像头
 const cameras = ref([]); // 默认摄像头列表为空，将由API填充
 const isMuted = ref(true); // 音频默认静音
 const volumeLevel = ref(50); // 默认音量
+const isLocked = ref(true); // 控制台默认锁定
+const heartbeatStatus = ref('unknown'); // 'ok', 'error', 'unknown'
 
+
+let heartbeatInterval = null;
 let taskPollInterval = null;
 let flawPollInterval = null;
 
@@ -194,6 +237,26 @@ const confirmedFlawCount = computed(() => flaws.value.filter(f => f.confirmed).l
 const unconfirmedFlawCount = computed(() => flaws.value.filter(f => !f.confirmed).length);
 const currentCamera = computed(() => cameras.value.find(c => c.id === selectedCameraId.value) || {});
 
+const heartbeatStatusText = computed(() => {
+  if (heartbeatStatus.value === 'ok') return '连接正常';
+  if (heartbeatStatus.value === 'error') return '连接异常';
+  return '未知';
+});
+
+const heartbeatStatusClass = computed(() => {
+  if (heartbeatStatus.value === 'ok') return 'status-ok';
+  if (heartbeatStatus.value === 'error') return 'status-error';
+  return 'status-unknown';
+});
+
+const pollHeartbeat = async () => {
+  try {
+    await getAgvHeartbeat();
+    heartbeatStatus.value = 'ok';
+  } catch (error) {
+    heartbeatStatus.value = 'error';
+  }
+};
 
 const initPlayer = (container, deviceId) => {
   if (!container || !deviceId) return;
@@ -212,7 +275,6 @@ const initPlayer = (container, deviceId) => {
     return; // 完成切换，退出函数
   }
   
-
   const easyplayer = new EasyPlayerPro(container, {
     libPath: "/js/",
     isLive: true,
@@ -252,6 +314,18 @@ const refreshMonitor = () => {
     else { console.error("当前摄像头没有有效的URL，无法刷新。"); }
 };
 
+const handleMove = async (direction) => {
+  if (isLocked.value) return;
+  try {
+    if (direction === 'forward') await agvForward();
+    else if (direction === 'stop') await agvStop();
+    else if (direction === 'backward') await agvBackward();
+    console.log(`发送指令: ${direction}`);
+  } catch (error) {
+    console.error(`发送指令 ${direction} 失败:`, error);
+  }
+};
+
 const pollTaskDetails = async () => {
   if (!currentTaskId.value) return;
   try {
@@ -261,11 +335,28 @@ const pollTaskDetails = async () => {
       totalDistance.value = taskData.totalDistance;
       distance.value = taskData.currentDistance;
       systemTime.value = taskData.updateTime;
-      isAgvActive.value = taskData.status === '1';
+      // **改动点 6：用任务状态来同步车辆状态开关**
+      isAgvActive.value = taskData.status === '1'; // 假设'1'为巡视中
     }
   } catch (error) {
     console.error("轮询任务详情失败:", error);
   }
+};
+
+// **改动点 7：新增一个专门处理开关变化的函数**
+const toggleAgvActive = async (event) => {
+    const shouldMove = event.target.checked;
+    try {
+        if (shouldMove) {
+            await agvForward();
+        } else {
+            await agvStop();
+        }
+    } catch (error) {
+        console.error("通过开关控制车辆失败:", error);
+        // 如果失败，将开关恢复到之前的状态
+        isAgvActive.value = !shouldMove;
+    }
 };
 
 const pollFlawList = async () => {
@@ -360,38 +451,32 @@ const handleTerminateTask = async () => {
 onMounted(async () => {
   await Promise.allSettled([
     getDeviceList().then(deviceData => {
-      console.log("从/easy-api/devices获取到的原始数据:", deviceData);
       let deviceList = [];
       if (deviceData && Array.isArray(deviceData.items)) {
         deviceList = deviceData.items;
-      } else {
-        console.warn("未能从 `deviceData.items` 中找到摄像头列表。");
       }
       
       if (deviceList.length > 0) {
-          console.log("成功解析到摄像头列表:", deviceList);
           cameras.value = deviceList.map(device => ({
               id: device.id, 
               name: device.name || `摄像头 ${device.id}`, 
-              // **改动点：调用辅助函数来生成URL**
               url: getVideoStreamUrl(device.id) 
           }));
           if (cameras.value.length > 0) {
               selectedCameraId.value = cameras.value[0].id;
           }
-      } else {
-          console.warn("解析后的摄像头列表为空。");
       }
     }).catch(error => {
       console.error("获取摄像头列表失败:", error);
     }),
     pollTaskDetails(),
-    pollFlawList()
+    pollFlawList(),
+    pollHeartbeat()
   ]);
 
-  console.log("初始数据加载完成，启动定时轮询...");
   taskPollInterval = setInterval(pollTaskDetails, 3000);
   flawPollInterval = setInterval(pollFlawList, 10000);
+  heartbeatInterval = setInterval(pollHeartbeat, 5000);
 });
 
 
@@ -399,20 +484,21 @@ onUnmounted(() => {
   if (player.value) { player.value.destroy(); }
   clearInterval(taskPollInterval);
   clearInterval(flawPollInterval);
+  clearInterval(heartbeatInterval);
 });
 
-watch(isAgvActive, async (newValue, oldValue) => {
-  if (newValue !== oldValue) {
-    try {
-      await controlAgv(newValue);
-      console.log(`发送AGV控制命令: ${newValue ? '前进' : '停止'}`);
-    } catch (error) {
-      console.error("发送AGV控制命令失败:", error);
-      console.error('控制车辆失败!');
-      isAgvActive.value = oldValue;
-    }
-  }
-});
+// watch(isAgvActive, async (newValue, oldValue) => {
+//   if (newValue !== oldValue) {
+//     try {
+//       await controlAgv(newValue);
+//       console.log(`发送AGV控制命令: ${newValue ? '前进' : '停止'}`);
+//     } catch (error) {
+//       console.error("发送AGV控制命令失败:", error);
+//       console.error('控制车辆失败!');
+//       isAgvActive.value = oldValue;
+//     }
+//   }
+// });
 
 watch(selectedCameraId, (newId) => {
     const newCam = cameras.value.find(c => c.id === newId);
@@ -859,6 +945,74 @@ input:checked + .slider:before {
     cursor: pointer;
     border-radius: 50%;
     border: none;
+}
+
+.control-lock { display: flex; align-items: center; gap: 8px; }
+.lock-label { font-size: 12px; color: #999; font-weight: normal; }
+.lock-btn { background: none; border: none; padding: 0; cursor: pointer; display: flex; align-items: center; }
+
+.agv-console .heartbeat-panel {
+  display: block;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 20px;
+}
+.agv-console .status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.agv-console .status-item .label {
+  font-size: 14px;
+  color: #606266;
+}
+.agv-console .status-item .value {
+  font-size: 14px;
+  font-weight: bold;
+}
+.agv-console .status-ok { color: #67c23a; }
+.agv-console .status-error { color: #f56c6c; }
+.agv-console .status-unknown { color: #909399; }
+
+.agv-console .control-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  transition: opacity 0.3s ease;
+}
+.agv-console .control-grid.locked {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.agv-console .control-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 15px 0;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  background-color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.agv-console .control-btn:hover:not(:disabled) {
+  background-color: #ecf5ff;
+  color: #409eff;
+  border-color: #c6e2ff;
+}
+.agv-console .control-btn.stop:hover:not(:disabled) {
+  background-color: #fef0f0;
+  color: #f56c6c;
+  border-color: #fde2e2;
+}
+.agv-console .control-btn span {
+  font-size: 14px;
+}
+.agv-console .control-btn svg {
+  width: 24px;
+  height: 24px;
 }
 
 </style>

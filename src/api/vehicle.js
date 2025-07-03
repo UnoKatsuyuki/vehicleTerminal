@@ -20,16 +20,36 @@ const cameraApiClient = axios.create({
 // AGV客户端的拦截器
 agvApiClient.interceptors.response.use(
   response => {
-    if (response.data && response.data.code === 200) {
-      return response.data.data;
+    if (response.data) {
+      // 兼容 code: 200 或 code: 0
+      if (typeof response.data.code !== 'undefined') {
+        if (response.data.code === 200 || response.data.code === 0) {
+          return response.data.data;
+        } else {
+          console.error('API 业务错误:', response.data);
+          return Promise.reject(new Error(response.data.msg || `操作失败，业务代码: ${response.data.code}`));
+        }
+      }
+      // 兼容 success: true
+      if (typeof response.data.success !== 'undefined') {
+        if (response.data.success) {
+          return response.data.data || response.data;
+        } else {
+          return Promise.reject(new Error(response.data.msg || '操作失败'));
+        }
+      }
+      console.log(response.data)
+      // 没有 code 字段，直接返回
+      return response.data;
     }
-    return Promise.reject(new Error(response.data.msg || '业务错误'));
+    return Promise.reject(new Error('无效的响应'));
   },
   error => {
     console.error('AGV API网络请求错误:', error);
     return Promise.reject(error);
   }
 );
+
 
 export const getDeviceList = () => {
     const myHeaders = new Headers();
@@ -82,13 +102,10 @@ export const updateFlaw = (flawData) => {
     return agvApiClient.put('/agv/flaw', flawData);
 };
 
-export const agvForward = () => {
-    return agvApiClient.post('/agv/movement/forward');
-};
-
-export const agvStop = () => {
-    return agvApiClient.post('/agv/movement/stop');
-};
+export const agvForward = () => agvApiClient.post('/agv/movement/forward');
+export const agvStop = () => agvApiClient.post('/agv/movement/stop');
+export const agvBackward = () => agvApiClient.post('/agv/movement/backward');
+export const getAgvHeartbeat = () => agvApiClient.get('/agv/movement/heartbeat');
 
 export const controlAgv = (isMoving) => {
     if (isMoving) {
