@@ -107,7 +107,7 @@
             </div>
             <div class="info-item">
               <div class="info-label">📍 已行驶距离</div>
-              <div class="info-value"><span class="count-animation">{{ distance.toFixed(2) }}</span> 米</div>
+              <div class="info-value"><span class="count-animation">{{ typeof distance === 'number' ? distance.toFixed(2) : '0.00' }}</span> 米</div>
             </div>
             <div class="info-item">
               <div class="info-label">⚠️ 故障总计</div>
@@ -351,6 +351,7 @@ const pollTaskDetails = async () => {
     const taskData = await getTaskDetails(currentTaskId.value);
 
     if (taskData) {
+      console.log(taskData)
       taskNumber.value = taskData.taskCode;
       console.log('taskNumber',taskNumber.value);
       totalDistance.value = taskData.totalDistance;
