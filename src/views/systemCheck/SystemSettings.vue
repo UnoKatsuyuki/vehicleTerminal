@@ -1,6 +1,9 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import axios from 'axios';
+
+const router = useRouter();
 
 // --- 设置 ---
 // 现在所有 API 请求都将指向 Vite 开发服务器的 /prod-api 路径，
@@ -114,8 +117,7 @@ const handleSave = async () => {
 
 // 取消操作
 const handleCancel = () => {
-    console.log("操作已取消，重新加载配置...");
-    fetchConfig();
+    router.push({ name: 'init' });
 };
 
 // --- 生命周期钩子 (Lifecycle Hook) ---
@@ -188,7 +190,7 @@ onMounted(() => {
             </va-card-title>
             <va-card-content>
                 <va-accordion v-model="accordionValue" multiple>
-                    <va-collapse v-for="(camera, index) in form.cameras" :key="camera.id"
+                    <va-collapse v-for="camera in form.cameras" :key="camera.id"
                         :header="`摄像头 ${camera.id} - ${camera.name}`">
                         <div class="p-4 flex flex-col gap-4">
                             <va-input v-model="camera.address" :label="`摄像头 ${camera.id} 地址`" placeholder="rtsp://..."
@@ -212,7 +214,7 @@ onMounted(() => {
         </va-card>
 
         <!-- 操作按钮 -->
-        <div class="flex justify-end gap-4 mt-8">
+        <div class="flex justify-end gap-4" style="margin-top: 3rem;">
             <va-button preset="secondary" @click="handleCancel" :disabled="isLoading">取消</va-button>
             <va-button @click="handleSave" :loading="isLoading">保存设置</va-button>
         </div>
@@ -247,4 +249,9 @@ body {
     transform: translateX(-50%);
     z-index: 1000;
 }
-</style> 
+
+/* 禁止 va-collapse 图标在展开时旋转 */
+.va-collapse--expanded .va-collapse__header__icon {
+  transform: rotate(0deg) !important;
+}
+</style>
