@@ -193,6 +193,27 @@
         </div>
       </div>
     </div>
+
+    <el-dialog v-model="completeDialogVisible" title="完成确认" width="400px">
+      <div style="font-size:16px;">
+        请确认是否要<strong>完成当前巡检任务</strong>？<br>
+        此操作不可撤销。
+      </div>
+      <template #footer>
+        <el-button @click="completeDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="onConfirmComplete">确定</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog v-model="terminateDialogVisible" title="终止确认" width="400px">
+      <div style="font-size:16px;">
+        您确定要<strong>终止当前巡检任务</strong>吗？<br>
+        <span style="color:#f56c6c;">此操作不可恢复！</span>
+      </div>
+      <template #footer>
+        <el-button @click="terminateDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="onConfirmTerminate">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -222,6 +243,8 @@ const selectedCameraId = ref(null); // 默认不选中任何摄像头
 const cameras = ref([]); // 默认摄像头列表为空，将由API填充
 const isLocked = ref(true); // 控制台默认锁定
 const heartbeatStatus = ref('unknown'); // 'ok', 'error', 'unknown'
+const completeDialogVisible = ref(false);
+const terminateDialogVisible = ref(false);
 
 let heartbeatInterval = null;
 let taskPollInterval = null;
@@ -405,53 +428,39 @@ const handleUpdateFlaw = async () => {
     }
 };
 
-const handleCompleteTask = async () => {
+const handleCompleteTask = () => {
+  completeDialogVisible.value = true;
+};
+
+const handleTerminateTask = () => {
+  terminateDialogVisible.value = true;
+};
+
+const onConfirmComplete = async () => {
+  completeDialogVisible.value = false;
   try {
-    await ElMessageBox.confirm(
-      '您确定要完成当前巡检任务吗？此操作不可撤销。',
-      '完成确认',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    );
     await endTask(currentTaskId.value, false);
     ElMessage.success('任务已完成!');
     setTimeout(() => {
       router.push({ name: 'task-list' });
     }, 800);
   } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('完成任务失败!');
-      console.error('完成任务失败:', error);
-    }
-    // 用户点了取消，不做任何处理
+    ElMessage.error('完成任务失败: ' + (error?.message || '未知错误'));
+    console.error('完成任务失败:', error);
   }
 };
 
-const handleTerminateTask = async () => {
+const onConfirmTerminate = async () => {
+  terminateDialogVisible.value = false;
   try {
-    await ElMessageBox.confirm(
-      '您确定要终止当前巡检任务吗？此操作不可恢复！',
-      '终止确认',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'error',
-      }
-    );
     await endTask(currentTaskId.value, true);
     ElMessage.success('任务已终止!');
     setTimeout(() => {
       router.push({ name: 'task-list' });
     }, 800);
   } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('终止任务失败!');
-      console.error('终止任务失败:', error);
-    }
-    // 用户点了取消，不做任何处理
+    ElMessage.error('终止任务失败: ' + (error?.message || '未知错误'));
+    console.error('终止任务失败:', error);
   }
 };
 

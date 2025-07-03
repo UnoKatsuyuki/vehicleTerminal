@@ -107,13 +107,13 @@ export const agvStop = () => agvApiClient.post('/agv/movement/stop');
 export const agvBackward = () => agvApiClient.post('/agv/movement/backward');
 export const getAgvHeartbeat = () => agvApiClient.get('/agv/movement/heartbeat');
 
-export const controlAgv = (isMoving) => {
-    if (isMoving) {
-        return agvForward();
-    } else {
-        return agvStop();
-    }
-};
+// export const controlAgv = (isMoving) => {
+//     if (isMoving) {
+//         return agvForward();
+//     } else {
+//         return agvStop();
+//     }
+// };
 
 export const endTask = (taskId, isAbort = false) => {
     return agvApiClient.post(`/agv/task/end/${taskId}?isAbort=${isAbort}`);
