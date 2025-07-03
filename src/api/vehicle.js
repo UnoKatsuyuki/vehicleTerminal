@@ -107,18 +107,13 @@ export const agvStop = () => agvApiClient.post('/agv/movement/stop');
 export const agvBackward = () => agvApiClient.post('/agv/movement/backward');
 export const getAgvHeartbeat = () => agvApiClient.get('/agv/movement/heartbeat');
 
-// export const controlAgv = (isMoving) => {
-//     if (isMoving) {
-//         return agvForward();
-//     } else {
-//         return agvStop();
-//     }
-// };
-
 export const endTask = (taskId, isAbort = false) => {
     return agvApiClient.post(`/agv/task/end/${taskId}?isAbort=${isAbort}`);
 };
 
+export const startTask = (taskId) => {
+    return agvApiClient.post(`/agv/task/start/${taskId}`);
+};
 
 // =================================================================
 // **新增：将URL拼接逻辑整合到这里**
@@ -133,3 +128,4 @@ export const getVideoStreamUrl = (deviceId) => {
     // 返回通过代理访问的相对路径
     return `${STREAM_MEDIA_URL}/live/${deviceId}_01.flv`;
 };
+

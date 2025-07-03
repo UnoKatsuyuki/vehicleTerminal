@@ -194,24 +194,24 @@
       </div>
     </div>
 
-    <el-dialog v-model="completeDialogVisible" title="完成确认" width="400px">
-      <div style="font-size:16px;">
-        请确认是否要<strong>完成当前巡检任务</strong>？<br>
-        此操作不可撤销。
+    <el-dialog v-model="completeDialogVisible" title="完成确认" width="400px" :close-on-click-modal="false">
+      <div style="font-size:16px; text-align:center; margin: 20px 0;">
+        <el-icon style="font-size:32px; color:#67c23a; margin-bottom:10px;"><CircleCheckFilled /></el-icon>
+        <div>请确认是否要<strong>完成当前巡检任务</strong>？<br>此操作不可撤销。</div>
       </div>
       <template #footer>
-        <el-button @click="completeDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="onConfirmComplete">确定</el-button>
+        <el-button size="large" @click="completeDialogVisible = false">取消</el-button>
+        <el-button size="large" type="success" @click="onConfirmComplete" :disabled="!canComplete">确定</el-button>
       </template>
     </el-dialog>
-    <el-dialog v-model="terminateDialogVisible" title="终止确认" width="400px">
-      <div style="font-size:16px;">
-        您确定要<strong>终止当前巡检任务</strong>吗？<br>
-        <span style="color:#f56c6c;">此操作不可恢复！</span>
+    <el-dialog v-model="terminateDialogVisible" title="终止确认" width="400px" :close-on-click-modal="false">
+      <div style="font-size:16px; text-align:center; margin: 20px 0;">
+        <el-icon style="font-size:32px; color:#f56c6c; margin-bottom:10px;"><CircleCloseFilled /></el-icon>
+        <div>您确定要<strong>终止当前巡检任务</strong>吗？<br><span style="color:#f56c6c;">此操作不可恢复！</span></div>
       </div>
       <template #footer>
-        <el-button @click="terminateDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="onConfirmTerminate">确定</el-button>
+        <el-button size="large" @click="terminateDialogVisible = false">取消</el-button>
+        <el-button size="large" type="danger" @click="onConfirmTerminate" :disabled="!canTerminate">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -224,8 +224,10 @@ import {
   updateFlaw, agvForward, agvStop, agvBackward, getAgvHeartbeat,
   getVideoStreamUrl, endTask
 } from '@/api/vehicle.js';
+import { updateTask } from '@/api/taskApi';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -267,6 +269,9 @@ const heartbeatStatusClass = computed(() => {
   if (heartbeatStatus.value === 'error') return 'status-error';
   return 'status-unknown';
 });
+
+const canComplete = computed(() => taskStatus.value === '巡视中');
+const canTerminate = computed(() => taskStatus.value === '巡视中');
 
 const pollHeartbeat = async () => {
   try {
@@ -349,15 +354,11 @@ const pollTaskDetails = async () => {
   if (!currentTaskId.value) return;
   try {
     const taskData = await getTaskDetails(currentTaskId.value);
-
     if (taskData) {
-      console.log(taskData)
       taskNumber.value = taskData.taskCode;
-      console.log('taskNumber',taskNumber.value);
       totalDistance.value = taskData.totalDistance;
       distance.value = taskData.currentDistance;
-      systemTime.value = taskData.updateTime;
-      taskData.taskStatus = "巡视中";
+      taskStatus.value = taskData.taskStatus;
     }
   } catch (error) {
     console.error("轮询任务详情失败:", error);
@@ -441,9 +442,16 @@ const onConfirmComplete = async () => {
   completeDialogVisible.value = false;
   try {
     await endTask(currentTaskId.value, false);
+    // 获取最新任务详情，更新状态为待上传
+    const taskData = await getTaskDetails(currentTaskId.value);
+    if (taskData) {
+      const updated = { ...taskData, taskStatus: '待上传' };
+      await updateTask(updated);
+      taskStatus.value = '待上传';
+    }
     ElMessage.success('任务已完成!');
     setTimeout(() => {
-      router.push({ name: 'task-list' });
+      router.back();
     }, 800);
   } catch (error) {
     ElMessage.error('完成任务失败: ' + (error?.message || '未知错误'));
@@ -457,7 +465,7 @@ const onConfirmTerminate = async () => {
     await endTask(currentTaskId.value, true);
     ElMessage.success('任务已终止!');
     setTimeout(() => {
-      router.push({ name: 'task-list' });
+      router.back();
     }, 800);
   } catch (error) {
     ElMessage.error('终止任务失败: ' + (error?.message || '未知错误'));
@@ -496,6 +504,8 @@ onMounted(async () => {
   taskPollInterval = setInterval(pollTaskDetails, 3000);
   flawPollInterval = setInterval(pollFlawList, 10000);
   heartbeatInterval = setInterval(pollHeartbeat, 5000);
+  console.log("can",canComplete)
+  console.log("task",currentTaskId.value.taskStatus)
 });
 
 
