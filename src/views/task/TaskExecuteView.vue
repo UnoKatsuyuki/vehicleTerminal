@@ -7,7 +7,7 @@
     <div class="main-container">
       <div class="content-area">
         <div class="video-area" id="video-container">
-          
+
         </div>
 
         <div class="scale-bar-area">
@@ -95,10 +95,6 @@
         <div class="card">
           <div class="card-header">
             车辆状态
-            <label class="switch">
-              <input type="checkbox" v-model="isAgvActive" />
-              <span class="slider"></span>
-            </label>
           </div>
           <div class="card-body">
             <div class="info-item">
@@ -202,12 +198,11 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
-// **改动点：导入新的辅助函数**
-import { 
-  getDeviceList, getTaskDetails, getFlawList, getFlawDetails, 
+import {
+  getDeviceList, getTaskDetails, getFlawList, getFlawDetails,
   updateFlaw, agvForward, agvStop, agvBackward, getAgvHeartbeat,
   completeTask, terminateTask,
-  getVideoStreamUrl 
+  getVideoStreamUrl
 } from '@/api/vehicle.js';
 const player = ref(null);
 const currentTaskId = ref('2');
@@ -274,7 +269,7 @@ const initPlayer = (container, deviceId) => {
     });
     return; // 完成切换，退出函数
   }
-  
+
   const easyplayer = new EasyPlayerPro(container, {
     libPath: "/js/",
     isLive: true,
@@ -335,7 +330,6 @@ const pollTaskDetails = async () => {
       totalDistance.value = taskData.totalDistance;
       distance.value = taskData.currentDistance;
       systemTime.value = taskData.updateTime;
-      // **改动点 6：用任务状态来同步车辆状态开关**
       isAgvActive.value = taskData.status === '1'; // 假设'1'为巡视中
     }
   } catch (error) {
@@ -343,21 +337,6 @@ const pollTaskDetails = async () => {
   }
 };
 
-// **改动点 7：新增一个专门处理开关变化的函数**
-const toggleAgvActive = async (event) => {
-    const shouldMove = event.target.checked;
-    try {
-        if (shouldMove) {
-            await agvForward();
-        } else {
-            await agvStop();
-        }
-    } catch (error) {
-        console.error("通过开关控制车辆失败:", error);
-        // 如果失败，将开关恢复到之前的状态
-        isAgvActive.value = !shouldMove;
-    }
-};
 
 const pollFlawList = async () => {
   if (!currentTaskId.value) return;
@@ -455,12 +434,12 @@ onMounted(async () => {
       if (deviceData && Array.isArray(deviceData.items)) {
         deviceList = deviceData.items;
       }
-      
+
       if (deviceList.length > 0) {
           cameras.value = deviceList.map(device => ({
-              id: device.id, 
-              name: device.name || `摄像头 ${device.id}`, 
-              url: getVideoStreamUrl(device.id) 
+              id: device.id,
+              name: device.name || `摄像头 ${device.id}`,
+              url: getVideoStreamUrl(device.id)
           }));
           if (cameras.value.length > 0) {
               selectedCameraId.value = cameras.value[0].id;
