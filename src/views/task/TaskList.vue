@@ -386,9 +386,9 @@ function handleTaskClick(row) {
   }
 }
 
-// 设置按钮操作
+// --- 【重构】设置按钮操作 ---
 function handleSettings() {
-  ElMessage.info("设置功能待开发");
+  router.push({ name: 'settings' });
 }
 
 // 返回操作

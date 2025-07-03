@@ -117,7 +117,7 @@ const handleSave = async () => {
 
 // 取消操作
 const handleCancel = () => {
-    router.push({ name: 'init' });
+    router.back();
 };
 
 // --- 生命周期钩子 (Lifecycle Hook) ---
