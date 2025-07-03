@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { extractTimeFormat } from 'element-plus';
 
 // 使用代理路径
 const AGV_API_BASE_URL = 'http://192.168.2.57/prod-api';
@@ -128,4 +129,5 @@ export const getVideoStreamUrl = (deviceId) => {
     // 返回通过代理访问的相对路径
     return `${STREAM_MEDIA_URL}/live/${deviceId}_01.flv`;
 };
+
 

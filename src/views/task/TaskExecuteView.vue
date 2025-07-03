@@ -51,12 +51,6 @@
             </div>
           </div>
           <div class="card-body agv-console">
-            <div class="status-grid heartbeat-panel">
-              <div class="status-item">
-                <span class="label">心跳状态</span>
-                <span class="value" :class="heartbeatStatusClass">{{ heartbeatStatusText }}</span>
-              </div>
-            </div>
             <div class="control-grid" :class="{ locked: isLocked }">
               <button class="control-btn" @click="handleMove('backward')" :disabled="isLocked">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
@@ -93,8 +87,9 @@
         </div>
 
         <div class="card">
-          <div class="card-header">
-            车辆状态
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>车辆状态</span>
+            <span :class="heartbeatStatusClass" style="font-size: 13px;">{{ heartbeatStatusText }}</span>
           </div>
           <div class="card-body">
             <div class="info-item">
@@ -120,6 +115,13 @@
             <div class="info-item">
               <div class="info-label">❓ 疑似故障</div>
               <div class="info-value unconfirmed-flaw">{{ unconfirmedFlawCount }}</div>
+            </div>
+            <div class="info-item" style="align-items: center;">
+              <div class="info-label">🚦 行驶状态</div>
+              <div class="info-value" style="display: flex; align-items: center; gap: 8px;">
+                <span :class="['breath-light', agvIsRunning ? 'running' : 'stopped']"></span>
+                <span>{{ agvIsRunning ? '行驶中' : '已停止' }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -236,7 +238,7 @@ const player = ref(null);
 const totalDistance = ref(0);
 const distance = ref(0);
 const taskNumber = ref('加载中');
-const systemTime = ref(new Date().toISOString());
+const systemTime = ref('加载中');
 const taskStatus = ref('未知');
 const flaws = ref([]);
 const isModalVisible = ref(false);
@@ -247,6 +249,7 @@ const isLocked = ref(true); // 控制台默认锁定
 const heartbeatStatus = ref('unknown'); // 'ok', 'error', 'unknown'
 const completeDialogVisible = ref(false);
 const terminateDialogVisible = ref(false);
+const agvIsRunning = ref(false);
 
 let heartbeatInterval = null;
 let taskPollInterval = null;
@@ -473,6 +476,20 @@ const onConfirmTerminate = async () => {
   }
 };
 
+const pollAgvStatus = async () => {
+
+  try {
+    const status = await getAgvHeartbeat();
+    if (status) {
+      systemTime.value = status.sysTime || '加载中';
+      agvIsRunning.value = status.isRunning || false;
+      distance.value = typeof status.currentPosition === 'number' ? status.currentPosition : 0;
+    }
+  } catch (error) {
+    console.error('获取AGV状态失败:', error);
+  }
+};
+
 onMounted(async () => {
 
   await Promise.allSettled([
@@ -498,14 +515,14 @@ onMounted(async () => {
 
     pollTaskDetails(),
     pollFlawList(),
-    pollHeartbeat()
+    pollHeartbeat(),
+    pollAgvStatus()
   ]);
 
   taskPollInterval = setInterval(pollTaskDetails, 3000);
   flawPollInterval = setInterval(pollFlawList, 10000);
   heartbeatInterval = setInterval(pollHeartbeat, 5000);
-  console.log("can",canComplete)
-  console.log("task",currentTaskId.value.taskStatus)
+  setInterval(pollAgvStatus, 2000); // 每2秒刷新一次AGV状态
 });
 
 
@@ -986,9 +1003,9 @@ input:checked + .slider:before {
   font-size: 14px;
   font-weight: bold;
 }
-.agv-console .status-ok { color: #67c23a; }
-.agv-console .status-error { color: #f56c6c; }
-.agv-console .status-unknown { color: #909399; }
+.status-ok { color: #67c23a; }
+.status-error { color: #f56c6c; }
+.status-unknown { color: #909399; }
 
 .agv-console .control-grid {
   display: grid;
@@ -1029,6 +1046,38 @@ input:checked + .slider:before {
 .agv-console .control-btn svg {
   width: 24px;
   height: 24px;
+}
+
+.breath-light {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #bbb;
+  margin-right: 4px;
+  vertical-align: middle;
+  box-shadow: 0 0 8px #bbb;
+  animation: breath-stopped 1.5s infinite;
+}
+.breath-light.running {
+  background: #67c23a;
+  box-shadow: 0 0 16px #67c23a;
+  animation: breath-running 1.5s infinite;
+}
+.breath-light.stopped {
+  background: #bbb;
+  box-shadow: 0 0 8px #bbb;
+  animation: breath-stopped 1.5s infinite;
+}
+@keyframes breath-running {
+  0% { box-shadow: 0 0 8px #67c23a; }
+  50% { box-shadow: 0 0 24px #67c23a; }
+  100% { box-shadow: 0 0 8px #67c23a; }
+}
+@keyframes breath-stopped {
+  0% { box-shadow: 0 0 8px #bbb; }
+  50% { box-shadow: 0 0 16px #bbb; }
+  100% { box-shadow: 0 0 8px #bbb; }
 }
 
 </style>
