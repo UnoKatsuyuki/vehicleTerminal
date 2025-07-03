@@ -77,39 +77,39 @@ service.interceptors.response.use(
 );
 
 
-/**
- * 用于请求摄像头服务的专用实例 /easy-api
- * 因为它需要特殊的 Authorization Header
- */
-const cameraService = axios.create({
-  baseURL: 'http://192.168.2.57/easy-api',
-  timeout: 10000,
-});
+// /**
+//  * 用于请求摄像头服务的专用实例 /easy-api
+//  * 因为它需要特殊的 Authorization Header
+//  */
+// const cameraService = axios.create({
+//   baseURL: 'http://192.168.2.57/easy-api',
+//   timeout: 10000,
+// });
 
-cameraService.interceptors.request.use(
-  config => {
-    // 根据文档，添加固定的 Authorization
-    config.headers['Authorization'] = 'Basic YWRtaW4xMjM6QWRtaW5AMTIz';
-    return config;
-  },
-  error => {
-    console.log(error);
-    return Promise.reject(error);
-  }
-)
+// cameraService.interceptors.request.use(
+//   config => {
+//     // 根据文档，添加固定的 Authorization
+//     config.headers['Authorization'] = 'Basic YWRtaW4xMjM6QWRtaW5AMTIz';
+//     return config;
+//   },
+//   error => {
+//     console.log(error);
+//     return Promise.reject(error);
+//   }
+// )
 
-// 摄像头服务的响应拦截器可以简化，因为它可能不遵循 AjaxResult 格式
-cameraService.interceptors.response.use(
-  response => response.data,
-  error => {
-    ElMessage({
-      message: `摄像头服务连接失败: ${error.message}`,
-      type: 'error',
-    });
-    return Promise.reject(error);
-  }
-);
+// // 摄像头服务的响应拦截器可以简化，因为它可能不遵循 AjaxResult 格式
+// cameraService.interceptors.response.use(
+//   response => response.data,
+//   error => {
+//     ElMessage({
+//       message: `摄像头服务连接失败: ${error.message}`,
+//       type: 'error',
+//     });
+//     return Promise.reject(error);
+//   }
+// );
 
 
 export default service;
-export { cameraService };
+// export { cameraService };
