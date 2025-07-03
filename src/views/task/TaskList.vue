@@ -318,7 +318,8 @@ function handleCreate() {
 function handleEdit(row) {
   resetForm(); // 先重置表单
   getTask(row.id).then(response => {
-    form.value = response.data;
+    // 【修复】getTask经过拦截器处理，返回的response本身就是任务数据对象
+    form.value = response;
     taskCodeSelection.value = 'custom'; // 编辑时模式固定为自定义
     dialog.open = true;
     dialog.title = "修改任务";
