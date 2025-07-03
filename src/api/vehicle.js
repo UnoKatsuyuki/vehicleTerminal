@@ -130,4 +130,8 @@ export const getVideoStreamUrl = (deviceId) => {
     return `${STREAM_MEDIA_URL}/live/${deviceId}_01.flv`;
 };
 
+export function addFlaw(data) {
+  return agvApiClient.post('/agv/flaw', data);
+}
+
 

@@ -377,7 +377,7 @@ async function handleStartPatrol(row) {
       // 手动更新任务状态为"巡视中"
       const updated = { ...row, taskStatus: '巡视中' };
       await updateTask(updated);
-      ElMessage.success('任务状态已手动更新为"巡视中"');
+      // ElMessage.success('任务状态已手动更新为"巡视中"');
       router.push({ name: 'task-execute', params: { id: row.id } });
     } catch (error) {
       ElMessage.error('手动更新任务状态失败: ' + (error?.message || '未知错误'));

@@ -36,120 +36,121 @@
       </div>
 
       <div class="sidebar">
-        <!-- =================================================== -->
-        <!-- **改动点 1：新增独立的AGV移动控制卡片** -->
-        <!-- =================================================== -->
-        <div class="card">
-          <div class="card-header">
-            <span>AGV 移动控制</span>
-            <div class="control-lock">
-              <span class="lock-label">{{ isLocked ? '已锁定' : '已解锁' }}</span>
-              <button class="lock-btn" @click="isLocked = !isLocked">
-                <svg v-if="isLocked" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f56c6c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#67c23a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 5-5 4.93 4.93 0 0 1 2.78.94"></path></svg>
-              </button>
+        <el-scrollbar>
+          <!-- =================================================== -->
+          <!-- **改动点 1：新增独立的AGV移动控制卡片** -->
+          <!-- =================================================== -->
+          <div class="card">
+            <div class="card-header">
+              <span>AGV 移动控制</span>
+              <div class="control-lock">
+                <span class="lock-label">{{ isLocked ? '已锁定' : '已解锁' }}</span>
+                <button class="lock-btn" @click="isLocked = !isLocked">
+                  <svg v-if="isLocked" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f56c6c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#67c23a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 5-5 4.93 4.93 0 0 1 2.78.94"></path></svg>
+                </button>
+              </div>
             </div>
-          </div>
-          <div class="card-body agv-console">
-            <div class="control-grid" :class="{ locked: isLocked }">
-              <button class="control-btn" @click="handleMove('backward')" :disabled="isLocked">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                <span>后退</span>
-              </button>
-              <button class="control-btn stop" @click="handleMove('stop')" :disabled="isLocked">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><rect x="9" y="9" width="6" height="6"></rect></svg>
-                <span>停止</span>
-              </button>
-              <button class="control-btn" @click="handleMove('forward')" :disabled="isLocked">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                <span>前进</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- **原有的"控制台"卡片，现在只负责视频和任务操作** -->
-        <div class="card">
-          <div class="card-header">
-            <span>视频与任务</span>
-          </div>
-          <div class="card-body">
-            <div class="control-buttons">
-              <button class="btn btn-primary" @click="refreshMonitor">刷新监控</button>
-              <select class="cam-selector" v-model="selectedCameraId">
-                <option v-if="cameras.length === 0" disabled>加载中...</option>
-                <option v-for="cam in cameras" :key="cam.id" :value="cam.id">{{ cam.name }}</option>
-              </select>
-              <button class="btn btn-success" @click="handleCompleteTask">完成巡检</button>
-              <button class="btn btn-danger" @click="handleTerminateTask">终止巡检</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-            <span>车辆状态</span>
-            <span :class="heartbeatStatusClass" style="font-size: 13px;">{{ heartbeatStatusText }}</span>
-          </div>
-          <div class="card-body">
-            <div class="info-item">
-              <div class="info-label">📄 巡视任务编号</div>
-              <div class="info-value">{{ taskNumber }}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">⏰ 车辆系统时间</div>
-              <div class="info-value">{{ formattedSystemTime }}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">📍 已行驶距离</div>
-              <div class="info-value"><span class="count-animation">{{ typeof distance === 'number' ? distance.toFixed(2) : '0.00' }}</span> 米</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">⚠️ 故障总计</div>
-              <div class="info-value">{{ flaws.length }}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">✅ 已确定故障</div>
-              <div class="info-value confirmed-flaw">{{ confirmedFlawCount }}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">❓ 疑似故障</div>
-              <div class="info-value unconfirmed-flaw">{{ unconfirmedFlawCount }}</div>
-            </div>
-            <div class="info-item" style="align-items: center;">
-              <div class="info-label">🚦 行驶状态</div>
-              <div class="info-value" style="display: flex; align-items: center; gap: 8px;">
-                <span :class="['breath-light', agvIsRunning ? 'running' : 'stopped']"></span>
-                <span>{{ agvIsRunning ? '行驶中' : '已停止' }}</span>
+            <div class="card-body agv-console">
+              <div class="control-grid" :class="{ locked: isLocked }">
+                <button class="control-btn" @click="handleMove('backward')" :disabled="isLocked">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                  <span>后退</span>
+                </button>
+                <button class="control-btn stop" @click="handleMove('stop')" :disabled="isLocked">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><rect x="9" y="9" width="6" height="6"></rect></svg>
+                  <span>停止</span>
+                </button>
+                <button class="control-btn" @click="handleMove('forward')" :disabled="isLocked">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                  <span>前进</span>
+                </button>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="card">
-          <div class="card-header">故障历史</div>
-          <div class="card-body">
-            <table class="flaw-table">
-              <thead>
-                <tr>
-                  <th>故障名称</th>
-                  <th>故障类型</th>
-                  <th>故障位置</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="flaws.length === 0">
-                  <td colspan="3" style="text-align: center; color: #999;">暂无故障记录</td>
-                </tr>
-                <tr v-for="flaw in flaws" :key="flaw.id" :class="{ confirmed: flaw.confirmed, unconfirmed: !flaw.confirmed }" @click="viewFlawDetail(flaw)">
-                  <td><a href="#" class="link">{{ flaw.flawName }}</a></td>
-                  <td>{{ flaw.flawType }}</td>
-                  <td>{{ flaw.flawDistance }}m</td>
-                </tr>
-              </tbody>
-            </table>
+          <!-- **原有的"控制台"卡片，现在只负责视频和任务操作** -->
+          <div class="card">
+            <div class="card-header">
+              <span>视频与任务</span>
+            </div>
+            <div class="card-body">
+              <div class="control-buttons">
+                <button class="btn btn-primary" @click="refreshMonitor">刷新监控</button>
+                <select class="cam-selector" v-model="selectedCameraId">
+                  <option v-if="cameras.length === 0" disabled>加载中...</option>
+                  <option v-for="cam in cameras" :key="cam.id" :value="cam.id">{{ cam.name }}</option>
+                </select>
+                <button class="btn btn-success" @click="handleCompleteTask">完成巡检</button>
+                <button class="btn btn-danger" @click="handleTerminateTask">终止巡检</button>
+              </div>
+            </div>
           </div>
-        </div>
+
+          <div class="card">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>车辆状态</span>
+              <span :class="heartbeatStatusClass" style="font-size: 13px;">{{ heartbeatStatusText }}</span>
+            </div>
+            <div class="card-body">
+              <div class="info-item">
+                <div class="info-label">📄 巡视任务编号</div>
+                <div class="info-value">{{ taskNumber }}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">⏰ 车辆系统时间</div>
+                <div class="info-value">{{ formattedSystemTime }}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">📍 已行驶距离</div>
+                <div class="info-value"><span class="count-animation">{{ typeof distance === 'number' ? distance.toFixed(2) : '0.00' }}</span> 米</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">⚠️ 故障总计</div>
+                <div class="info-value">{{ flaws.length }}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">✅ 已确定故障</div>
+                <div class="info-value confirmed-flaw">{{ confirmedFlawCount }}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">❓ 疑似故障</div>
+                <div class="info-value unconfirmed-flaw">{{ unconfirmedFlawCount }}</div>
+              </div>
+              <div class="info-item" style="align-items: center;">
+                <div class="info-label">🚦 行驶状态</div>
+                <div class="info-value" style="display: flex; align-items: center; gap: 8px;">
+                  <span :class="['breath-light', agvIsRunning ? 'running' : 'stopped']"></span>
+                  <span>{{ agvIsRunning ? '行驶中' : '已停止' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <el-card shadow="never" class="info-card">
+            <template #header>
+              <div class="card-header">
+                <span>⚠️ 故障历史</span>
+              </div>
+            </template>
+            <el-table :data="flaws" style="width: 100%" @row-click="viewFlawDetail" :row-class-name="tableRowClassName">
+              <el-table-column prop="flawName" label="故障名称" />
+              <el-table-column prop="flawType" label="类型" width="80"/>
+              <el-table-column prop="flawDistance" label="位置(m)" width="80"/>
+              <el-table-column label="图片" width="100">
+                <template #default="scope">
+                  <el-image v-if="scope.row.flawImageUrl" :src="scope.row.flawImageUrl" fit="cover" style="width:60px;height:40px;" :preview-src-list="[scope.row.flawImageUrl]" preview-teleported/>
+                  <span v-else style="color:#bbb;">无</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="70" align="center">
+                <template #default="scope">
+                  <el-button link type="primary" @click.stop="viewFlawDetail(scope.row)">详情</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+        </el-scrollbar>
       </div>
     </div>
 
@@ -224,7 +225,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import {
   getDeviceList, getTaskDetails, getFlawList, getFlawDetails,
   updateFlaw, agvForward, agvStop, agvBackward, getAgvHeartbeat,
-  getVideoStreamUrl, endTask
+  getVideoStreamUrl, endTask, addFlaw
 } from '@/api/vehicle.js';
 import { updateTask } from '@/api/taskApi';
 import { useRoute, useRouter } from 'vue-router';
@@ -251,9 +252,11 @@ const completeDialogVisible = ref(false);
 const terminateDialogVisible = ref(false);
 const agvIsRunning = ref(false);
 
+// 定时器变量
+let taskInterval = null;
+let agvInterval = null;
+let flawInterval = null;
 let heartbeatInterval = null;
-let taskPollInterval = null;
-let flawPollInterval = null;
 
 const progressPercentage = computed(() => totalDistance.value === 0 ? 0 : Math.min((distance.value / totalDistance.value) * 100, 100));
 const formattedSystemTime = computed(() => new Date(systemTime.value).toLocaleString('zh-CN'));
@@ -353,6 +356,25 @@ const handleMove = async (direction) => {
   }
 };
 
+function handleVisibilityChange() {
+  if (document.hidden) {
+    clearInterval(taskInterval);
+    taskInterval = null;
+    clearInterval(agvInterval);
+    agvInterval = null;
+    clearInterval(flawInterval);
+    flawInterval = null;
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  } else {
+    if (!taskInterval) taskInterval = setInterval(pollTaskDetails, 3000);
+    if (!agvInterval) agvInterval = setInterval(pollAgvStatus, 2000);
+    if (!flawInterval) flawInterval = setInterval(pollFlawList, 10000);
+    if (!heartbeatInterval) heartbeatInterval = setInterval(pollHeartbeat, 5000);
+  }
+}
+
+// 恢复 pollTaskDetails
 const pollTaskDetails = async () => {
   if (!currentTaskId.value) return;
   try {
@@ -360,7 +382,7 @@ const pollTaskDetails = async () => {
     if (taskData) {
       taskNumber.value = taskData.taskCode;
       totalDistance.value = taskData.totalDistance;
-      distance.value = taskData.currentDistance;
+      // distance.value = taskData.currentDistance;
       taskStatus.value = taskData.taskStatus;
     }
   } catch (error) {
@@ -368,23 +390,87 @@ const pollTaskDetails = async () => {
   }
 };
 
-const pollFlawList = async () => {
-  if (!currentTaskId.value) return;
+// 恢复 pollAgvStatus
+const pollAgvStatus = async () => {
   try {
-    const newFlaws = await getFlawList(currentTaskId.value);
-    if (newFlaws && Array.isArray(newFlaws)) {
-        flaws.value = newFlaws;
-        if (!isModalVisible.value) {
-            const unshownFlaw = newFlaws.find(f => !f.shown);
-            if (unshownFlaw) {
-                console.log(`发现新的未提示故障: ${unshownFlaw.flawName}`);
-                viewFlawDetail(unshownFlaw);
-            }
-        }
+    const status = await getAgvHeartbeat();
+    if (status) {
+      systemTime.value = status.sysTime || '加载中';
+      agvIsRunning.value = status.isRunning || false;
+      distance.value = typeof status.currentPosition === 'number' ? status.currentPosition : 0;
     }
   } catch (error) {
-    console.error("轮询缺陷列表失败:", error);
+    console.error('获取AGV状态失败:', error);
   }
+};
+
+let flawsInitialized = false;
+const pollFlawList = async () => {
+  if (!flawsInitialized) {
+    flaws.value = [
+      {
+        id: 1,
+        taskId: 1001,
+        flawType: '安全隐患',
+        flawName: '轨道异物',
+        flawDesc: '检测到轨道上有异物',
+        flawDistance: 3,
+        flawImageUrl: '',
+        shown: false,
+        confirmed: false,
+        remark: '',
+        createTime: new Date().toLocaleString()
+      },
+      {
+        id: 2,
+        taskId: 1001,
+        flawType: '设备损坏',
+        flawName: '轨枕破损',
+        flawDesc: '轨枕出现破损',
+        flawDistance: 4,
+        flawImageUrl: '',
+        shown: true,
+        confirmed: true,
+        remark: '需尽快维修',
+        createTime: new Date().toLocaleString()
+      },
+      {
+        id: 3,
+        taskId: 1001,
+        flawType: '信号问题',
+        flawName: '信号异常',
+        flawDesc: '信号短暂中断',
+        flawDistance: 5,
+        flawImageUrl: '',
+        shown: false,
+        confirmed: false,
+        remark: '',
+        createTime: new Date().toLocaleString()
+      }
+    ];
+    flawsInitialized = true;
+  }
+  // 自动弹出第一个未shown的故障详情弹窗，并截图
+  const unshownFlaw = flaws.value.find(f => !f.shown);
+  if (unshownFlaw && !isModalVisible.value) {
+    selectedFlaw.value = unshownFlaw;
+    selectedFlaw.value.flawImageUrl = await captureScreenshot();
+    isModalVisible.value = true;
+  }
+};
+
+// 自动截图函数，适配EasyPlayerPro
+const captureScreenshot = async () => {
+  // player.value 是 EasyPlayerPro 实例
+  if (player.value && typeof player.value.screenshot === 'function') {
+    try {
+      // 返回base64图片
+      return player.value.screenshot('flaw', 'png', 0.8, 'base64');
+    } catch (e) {
+      console.warn('EasyPlayerPro 截图失败', e);
+    }
+  }
+  return '';
 };
 
 const viewFlawDetail = async (flaw) => {
@@ -420,17 +506,17 @@ const closeFlawModal = async () => {
 };
 
 const handleUpdateFlaw = async () => {
-    if (!selectedFlaw.value) return;
-    try {
-        selectedFlaw.value.shown = true;
-        await updateFlaw(selectedFlaw.value);
-        console.log('缺陷信息更新成功!');
-        closeFlawModal();
-        pollFlawList();
-    } catch(error) {
-        console.error("更新缺陷失败:", error);
-        console.error('更新缺陷失败!');
-    }
+  if (!selectedFlaw.value) return;
+  try {
+    console.log('selectedFlaw',selectedFlaw.value)
+    await addFlaw(selectedFlaw.value);
+    selectedFlaw.value.shown = true;
+    ElMessage.success('缺陷已保存并上传！');
+    closeFlawModal();
+  } catch (error) {
+    ElMessage.error('上传失败，请重试');
+    console.error('上传缺陷失败:', error);
+  }
 };
 
 const handleCompleteTask = () => {
@@ -476,63 +562,79 @@ const onConfirmTerminate = async () => {
   }
 };
 
-const pollAgvStatus = async () => {
-
-  try {
-    const status = await getAgvHeartbeat();
-    if (status) {
-      systemTime.value = status.sysTime || '加载中';
-      agvIsRunning.value = status.isRunning || false;
-      distance.value = typeof status.currentPosition === 'number' ? status.currentPosition : 0;
-    }
-  } catch (error) {
-    console.error('获取AGV状态失败:', error);
-  }
+const tableRowClassName = ({ row }) => {
+  if (row.confirmed === true) return 'status-confirmed';
+  if (row.confirmed === false) return 'status-ignored';
+  return 'status-pending';
 };
 
-onMounted(async () => {
+let lastDistance = null;
+onMounted(() => {
+  lastDistance = distance.value;
+});
+watch(distance, (newDistance, oldDistance) => {
+  if (lastDistance === null) {
+    lastDistance = newDistance;
+    return;
+  }
+  if (!isModalVisible.value && newDistance > lastDistance) {
+    const nextFlaw = flaws.value.find(f =>
+      !f.shown &&
+      f.flawDistance > lastDistance &&
+      f.flawDistance <= newDistance
+    );
+    if (nextFlaw) {
+      selectedFlaw.value = nextFlaw;
+      const img = captureScreenshot();
+      console.log('截图base64:', img);
+      selectedFlaw.value.flawImageUrl = img;
+      isModalVisible.value = true;
+    }
+  }
+  lastDistance = newDistance;
+});
 
+onMounted(async () => {
   await Promise.allSettled([
     getDeviceList().then(deviceData => {
       let deviceList = [];
       if (deviceData && Array.isArray(deviceData.items)) {
         deviceList = deviceData.items;
       }
-
       if (deviceList.length > 0) {
-          cameras.value = deviceList.map(device => ({
-              id: device.id,
-              name: device.name || `摄像头 ${device.id}`,
-              url: getVideoStreamUrl(device.id)
-          }));
-          if (cameras.value.length > 0) {
-              selectedCameraId.value = cameras.value[0].id;
-          }
+        cameras.value = deviceList.map(device => ({
+          id: device.id,
+          name: device.name || `摄像头 ${device.id}`,
+          url: getVideoStreamUrl(device.id)
+        }));
+        if (cameras.value.length > 0) {
+          selectedCameraId.value = cameras.value[0].id;
+        }
       }
     }).catch(error => {
       console.error("获取摄像头列表失败:", error);
     }),
-
     pollTaskDetails(),
     pollFlawList(),
     pollHeartbeat(),
     pollAgvStatus()
   ]);
 
-  taskPollInterval = setInterval(pollTaskDetails, 3000);
-  flawPollInterval = setInterval(pollFlawList, 10000);
+  taskInterval = setInterval(pollTaskDetails, 3000);
+  agvInterval = setInterval(pollAgvStatus, 2000);
+  flawInterval = setInterval(pollFlawList, 10000);
   heartbeatInterval = setInterval(pollHeartbeat, 5000);
-  setInterval(pollAgvStatus, 2000); // 每2秒刷新一次AGV状态
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 });
-
 
 onUnmounted(() => {
   if (player.value) { player.value.destroy(); }
-  clearInterval(taskPollInterval);
-  clearInterval(flawPollInterval);
+  clearInterval(taskInterval);
+  clearInterval(agvInterval);
+  clearInterval(flawInterval);
   clearInterval(heartbeatInterval);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
-
 
 watch(selectedCameraId, (newId) => {
     const newCam = cameras.value.find(c => c.id === newId);
@@ -1079,5 +1181,12 @@ input:checked + .slider:before {
   50% { box-shadow: 0 0 16px #bbb; }
   100% { box-shadow: 0 0 8px #bbb; }
 }
+
+.status-confirmed { color: #67c23a; font-weight: bold; }
+.status-ignored { color: #909399; font-weight: bold; }
+.status-pending { color: #e6a23c; font-weight: bold; }
+.el-table .status-confirmed { --el-table-tr-bg-color: var(--el-color-success-light-9); }
+.el-table .status-ignored { --el-table-tr-bg-color: var(--el-color-info-light-9); }
+.el-table .status-pending { --el-table-tr-bg-color: var(--el-color-warning-light-9); }
 
 </style>
