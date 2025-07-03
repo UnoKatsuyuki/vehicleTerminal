@@ -74,7 +74,7 @@
           </div>
         </div>
 
-        <!-- **原有的“控制台”卡片，现在只负责视频和任务操作** -->
+        <!-- **原有的"控制台"卡片，现在只负责视频和任务操作** -->
         <div class="card">
           <div class="card-header">
             <span>视频与任务</span>
@@ -201,26 +201,27 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import {
   getDeviceList, getTaskDetails, getFlawList, getFlawDetails,
   updateFlaw, agvForward, agvStop, agvBackward, getAgvHeartbeat,
-  completeTask, terminateTask,
-  getVideoStreamUrl
+  getVideoStreamUrl, endTask
 } from '@/api/vehicle.js';
+import { useRoute, useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
+
+const route = useRoute();
+const router = useRouter();
+const currentTaskId = ref(route.params.id); // 动态获取任务ID
 const player = ref(null);
-const currentTaskId = ref('2');
-const taskNumber = ref('加载中...');
 const totalDistance = ref(0);
 const distance = ref(0);
+const taskNumber = ref('加载中');
 const systemTime = ref(new Date().toISOString());
-const isAgvActive = ref(false);
+const taskStatus = ref('未知');
 const flaws = ref([]);
 const isModalVisible = ref(false);
 const selectedFlaw = ref(null);
 const selectedCameraId = ref(null); // 默认不选中任何摄像头
 const cameras = ref([]); // 默认摄像头列表为空，将由API填充
-const isMuted = ref(true); // 音频默认静音
-const volumeLevel = ref(50); // 默认音量
 const isLocked = ref(true); // 控制台默认锁定
 const heartbeatStatus = ref('unknown'); // 'ok', 'error', 'unknown'
-
 
 let heartbeatInterval = null;
 let taskPollInterval = null;
@@ -325,18 +326,19 @@ const pollTaskDetails = async () => {
   if (!currentTaskId.value) return;
   try {
     const taskData = await getTaskDetails(currentTaskId.value);
+
     if (taskData) {
-      taskNumber.value = taskData.taskNumber;
+      taskNumber.value = taskData.taskCode;
+      console.log('taskNumber',taskNumber.value);
       totalDistance.value = taskData.totalDistance;
       distance.value = taskData.currentDistance;
       systemTime.value = taskData.updateTime;
-      isAgvActive.value = taskData.status === '1'; // 假设'1'为巡视中
+      taskData.taskStatus = "巡视中";
     }
   } catch (error) {
     console.error("轮询任务详情失败:", error);
   }
 };
-
 
 const pollFlawList = async () => {
   if (!currentTaskId.value) return;
@@ -376,7 +378,7 @@ const markFlawAsShown = async () => {
         try {
             selectedFlaw.value.shown = true;
             await updateFlaw(selectedFlaw.value);
-            console.log(`缺陷 ${selectedFlaw.value.id} 已标记为“已提示”`);
+            console.log(`缺陷 ${selectedFlaw.value.id} 已标记为"已提示"`);
         } catch (error) {
             console.error("标记缺陷为已读失败:", error);
         }
@@ -404,30 +406,57 @@ const handleUpdateFlaw = async () => {
 };
 
 const handleCompleteTask = async () => {
-    const confirmed = window.prompt("您确定要完成当前巡检任务吗? 请输入 'yes' 确认。");
-    if (confirmed === 'yes') {
-        try {
-            await completeTask(currentTaskId.value);
-            console.log('任务已完成!');
-        } catch (error) {
-            console.error("完成任务失败:", error);
-        }
+  try {
+    await ElMessageBox.confirm(
+      '您确定要完成当前巡检任务吗？此操作不可撤销。',
+      '完成确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    );
+    await endTask(currentTaskId.value, false);
+    ElMessage.success('任务已完成!');
+    setTimeout(() => {
+      router.push({ name: 'task-list' });
+    }, 800);
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('完成任务失败!');
+      console.error('完成任务失败:', error);
     }
+    // 用户点了取消，不做任何处理
+  }
 };
 
 const handleTerminateTask = async () => {
-    const confirmed = window.prompt("您确定要终止当前巡检任务吗? 此操作不可恢复! 请输入 'yes' 确认。");
-    if (confirmed === 'yes') {
-        try {
-            await terminateTask(currentTaskId.value);
-            console.log('任务已终止!');
-        } catch (error) {
-            console.error("终止任务失败:", error);
-        }
+  try {
+    await ElMessageBox.confirm(
+      '您确定要终止当前巡检任务吗？此操作不可恢复！',
+      '终止确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'error',
+      }
+    );
+    await endTask(currentTaskId.value, true);
+    ElMessage.success('任务已终止!');
+    setTimeout(() => {
+      router.push({ name: 'task-list' });
+    }, 800);
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('终止任务失败!');
+      console.error('终止任务失败:', error);
     }
+    // 用户点了取消，不做任何处理
+  }
 };
 
 onMounted(async () => {
+
   await Promise.allSettled([
     getDeviceList().then(deviceData => {
       let deviceList = [];
@@ -448,6 +477,7 @@ onMounted(async () => {
     }).catch(error => {
       console.error("获取摄像头列表失败:", error);
     }),
+
     pollTaskDetails(),
     pollFlawList(),
     pollHeartbeat()
@@ -466,18 +496,6 @@ onUnmounted(() => {
   clearInterval(heartbeatInterval);
 });
 
-// watch(isAgvActive, async (newValue, oldValue) => {
-//   if (newValue !== oldValue) {
-//     try {
-//       await controlAgv(newValue);
-//       console.log(`发送AGV控制命令: ${newValue ? '前进' : '停止'}`);
-//     } catch (error) {
-//       console.error("发送AGV控制命令失败:", error);
-//       console.error('控制车辆失败!');
-//       isAgvActive.value = oldValue;
-//     }
-//   }
-// });
 
 watch(selectedCameraId, (newId) => {
     const newCam = cameras.value.find(c => c.id === newId);
@@ -487,7 +505,6 @@ watch(selectedCameraId, (newId) => {
 </script>
 
 <style scoped>
-/* 您的CSS样式保持不变 */
 * {
     margin: 0;
     padding: 0;

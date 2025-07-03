@@ -115,12 +115,8 @@ export const controlAgv = (isMoving) => {
     }
 };
 
-export const completeTask = (taskId) => {
-    return agvApiClient.post(`/agv/task/complete/${taskId}`);
-};
-
-export const terminateTask = (taskId) => {
-    return agvApiClient.post(`/agv/task/terminate/${taskId}`);
+export const endTask = (taskId, isAbort = false) => {
+    return agvApiClient.post(`/agv/task/end/${taskId}?isAbort=${isAbort}`);
 };
 
 
