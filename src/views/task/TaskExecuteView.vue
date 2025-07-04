@@ -225,7 +225,8 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import {
   getDeviceList, getTaskDetails, getFlawList, getFlawDetails,
   updateFlaw, agvForward, agvStop, agvBackward, getAgvHeartbeat,
-  getVideoStreamUrl, endTask, addFlaw
+  getVideoStreamUrl, endTask, addFlaw,
+  getLiveFlawInfo
 } from '@/api/vehicle.js';
 import { updateTask } from '@/api/taskApi';
 import { useRoute, useRouter } from 'vue-router';
@@ -381,7 +382,7 @@ const pollTaskDetails = async () => {
     const taskData = await getTaskDetails(currentTaskId.value);
     if (taskData) {
       taskNumber.value = taskData.taskCode;
-      totalDistance.value = taskData.totalDistance;
+      totalDistance.value = Number(taskData.taskTrip) || 0;
       // distance.value = taskData.currentDistance;
       taskStatus.value = taskData.taskStatus;
     }
@@ -404,51 +405,20 @@ const pollAgvStatus = async () => {
   }
 };
 
-let flawsInitialized = false;
 const pollFlawList = async () => {
-  if (!flawsInitialized) {
-    flaws.value = [
-      {
-        id: 1,
-        taskId: 1001,
-        flawType: '安全隐患',
-        flawName: '轨道异物',
-        flawDesc: '检测到轨道上有异物',
-        flawDistance: 3,
-        flawImageUrl: '',
-        shown: false,
-        confirmed: false,
-        remark: '',
-        createTime: new Date().toLocaleString()
-      },
-      {
-        id: 2,
-        taskId: 1001,
-        flawType: '设备损坏',
-        flawName: '轨枕破损',
-        flawDesc: '轨枕出现破损',
-        flawDistance: 4,
-        flawImageUrl: '',
-        shown: true,
-        confirmed: true,
-        remark: '需尽快维修',
-        createTime: new Date().toLocaleString()
-      },
-      {
-        id: 3,
-        taskId: 1001,
-        flawType: '信号问题',
-        flawName: '信号异常',
-        flawDesc: '信号短暂中断',
-        flawDistance: 5,
-        flawImageUrl: '',
-        shown: false,
-        confirmed: false,
-        remark: '',
-        createTime: new Date().toLocaleString()
-      }
-    ];
-    flawsInitialized = true;
+  if (!currentTaskId.value) return;
+  try {
+    const liveFlaws = await getLiveFlawInfo(currentTaskId.value);
+    console.log('liveFlaws:', liveFlaws);
+    if (Array.isArray(liveFlaws)) {
+      flaws.value = liveFlaws;
+    } else if (liveFlaws && Array.isArray(liveFlaws.rows)) {
+      flaws.value = liveFlaws.rows;
+    } else {
+      flaws.value = [];
+    }
+  } catch (error) {
+    console.error('实时获取故障信息失败:', error);
   }
   // 自动弹出第一个未shown的故障详情弹窗，并截图
   const unshownFlaw = flaws.value.find(f => !f.shown);

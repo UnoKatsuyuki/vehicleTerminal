@@ -134,4 +134,13 @@ export function addFlaw(data) {
   return agvApiClient.post('/agv/flaw', data);
 }
 
+/**
+ * 获取任务实时故障信息
+ * @param {number|string} taskId 任务ID
+ * @returns {Promise<Array>} 实时故障列表
+ */
+export const getLiveFlawInfo = (taskId) => {
+  return agvApiClient.get(`/agv/flaw/live/${taskId}`);
+};
+
 
