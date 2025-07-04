@@ -140,7 +140,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { getTask, listFlaw } from '@/api/taskApi.js';
+import { getTask, listFlaw } from '@/api/carApi.js';
 import { ElMessage } from 'element-plus';
 import { Picture } from '@element-plus/icons-vue';
 

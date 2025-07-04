@@ -224,10 +224,10 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import {
   getDeviceList, getTaskDetails, getFlawList, getFlawDetails,
-  updateFlaw, agvForward, agvStop, agvBackward, getAgvHeartbeat,
+  updateFlaw_vehicle, agvForward, agvStop, agvBackward, getAgvHeartbeat,
   getVideoStreamUrl, endTask, addFlaw,
   getLiveFlawInfo
-} from '@/api/vehicle.js';
+} from '@/api/carApi.js';
 import { updateTask } from '@/api/taskApi';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -468,7 +468,7 @@ const markFlawAsShown = async () => {
     if (selectedFlaw.value.shown === false) {
         try {
             selectedFlaw.value.shown = true;
-            await updateFlaw(selectedFlaw.value);
+            await updateFlaw_vehicle(selectedFlaw.value);
             console.log(`缺陷 ${selectedFlaw.value.id} 已标记为"已提示"`);
         } catch (error) {
             console.error("标记缺陷为已读失败:", error);
