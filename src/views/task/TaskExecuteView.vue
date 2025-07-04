@@ -259,7 +259,14 @@ let agvInterval = null;
 let flawInterval = null;
 let heartbeatInterval = null;
 
-const progressPercentage = computed(() => totalDistance.value === 0 ? 0 : Math.min((distance.value / totalDistance.value) * 100, 100));
+const progressPercentage = computed(() => {
+  const total = Number(totalDistance.value);
+  const current = Number(distance.value);
+  if (!total || isNaN(total) || total <= 0) return 0;
+  if (!current || isNaN(current) || current < 0) return 0;
+  const percent = (current / total) * 100;
+  return Math.max(0, Math.min(percent, 100));
+});
 const formattedSystemTime = computed(() => new Date(systemTime.value).toLocaleString('zh-CN'));
 const confirmedFlawCount = computed(() => flaws.value.filter(f => f.confirmed).length);
 const unconfirmedFlawCount = computed(() => flaws.value.filter(f => !f.confirmed).length);
