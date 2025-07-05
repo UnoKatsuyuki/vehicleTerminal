@@ -40,6 +40,43 @@ localApiClient.interceptors.response.use(
   }
 );
 
+// ===================== 缺陷管理相关接口 =====================
+export function getFlawList(params = {}) {
+  return localApiClient.get('/agv/flaw/list', { params });
+}
+
+export function getFlawDetail(id) {
+  return localApiClient.get(`/agv/flaw/${id}`);
+}
+
+export function addFlaw(flawData) {
+  return localApiClient.post('/agv/flaw', flawData);
+}
+
+export function updateFlaw(flawData) {
+  return localApiClient.put('/agv/flaw', flawData);
+}
+
+export function deleteFlaw(id) {
+  return localApiClient.delete(`/agv/flaw/${id}`);
+}
+
+export function confirmFlaw(id) {
+  return localApiClient.put(`/agv/flaw/confirm/${id}`);
+}
+
+export function uploadFlaw(id) {
+  return localApiClient.put(`/agv/flaw/upload/${id}`);
+}
+
+export function getLiveFlawsByTaskId(taskId) {
+  return localApiClient.get(`/agv/flaw/live/${taskId}`);
+}
+
+export function checkAllFlawsConfirmed(taskId) {
+  return localApiClient.get(`/agv/flaw/checkConfirmed/${taskId}`);
+}
+
 // ===================== 任务管理相关接口 =====================
 export function getTaskList(params = {}) {
   return localApiClient.get('/agv/task/list', { params });
@@ -77,46 +114,3 @@ export function preUploadTask(id) {
 export function uploadTask(id) {
   return localApiClient.put(`/agv/task/upload/${id}`);
 }
-
-// ===================== 故障管理相关接口 =====================
-export function getFlawList(params = {}) {
-  return localApiClient.get('/agv/flaw/list', { params });
-}
-
-export function getFlawDetail(id) {
-  return localApiClient.get(`/agv/flaw/${id}`);
-}
-
-export function addFlaw(flawData) {
-  return localApiClient.post('/agv/flaw', flawData);
-}
-
-export function updateFlaw(flawData) {
-  return localApiClient.put('/agv/flaw', flawData);
-}
-
-export function deleteFlaw(id) {
-  return localApiClient.delete(`/agv/flaw/${id}`);
-}
-
-export function confirmFlaw(id) {
-  return localApiClient.put(`/agv/flaw/confirm/${id}`);
-}
-
-export function uploadFlaw(id) {
-  return localApiClient.put(`/agv/flaw/upload/${id}`);
-}
-
-export function getLiveFlawsByTaskId(taskId) {
-  return localApiClient.get(`/agv/flaw/live/${taskId}`);
-}
-
-export function checkAllFlawsConfirmed(taskId) {
-  return localApiClient.get(`/agv/flaw/checkConfirmed/${taskId}`);
-}
-
-// ===================== 系统检查接口 =====================
-export const checkFs = () => localApiClient.get('/system/check/fs');
-export const checkDb = () => localApiClient.get('/system/check/db');
-export const checkAgv = () => localApiClient.get('/system/check/agv');
-export const checkCam = () => localApiClient.get('/system/check/cam');

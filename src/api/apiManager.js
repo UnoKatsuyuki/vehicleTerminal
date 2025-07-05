@@ -136,27 +136,6 @@ export const checkAllFlawsConfirmed = (taskId) => {
   return api.checkAllFlawsConfirmed(taskId);
 };
 
-// 系统检查接口 - jincangApi.js中有这些方法
-export const checkFs = () => {
-  const api = getApi();
-  return api.checkFs();
-};
-
-export const checkDb = () => {
-  const api = getApi();
-  return api.checkDb();
-};
-
-export const checkAgv = () => {
-  const api = getApi();
-  return api.checkAgv();
-};
-
-export const checkCam = () => {
-  const api = getApi();
-  return api.checkCam();
-};
-
 // 以下方法jincangApi.js中没有，使用carApi.js
 export const getDeviceList = () => {
   return carApi.getDeviceList();
@@ -196,6 +175,23 @@ export const getFlawDetails = (flawId) => {
 
 export const updateFlaw_vehicle = (flawData) => {
   return carApi.updateFlaw_vehicle(flawData);
+};
+
+// 系统检查接口 - 只使用carApi.js
+export const checkFs = () => {
+  return carApi.checkFs();
+};
+
+export const checkDb = () => {
+  return carApi.checkDb();
+};
+
+export const checkAgv = () => {
+  return carApi.checkAgv();
+};
+
+export const checkCam = () => {
+  return carApi.checkCam();
 };
 
 // 获取当前数据源信息
