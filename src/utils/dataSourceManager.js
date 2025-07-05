@@ -100,7 +100,8 @@ export const switchDataSource = async (newDataSourceType) => {
 export const testVehicleConnection = async () => {
   try {
     const config = getCurrentDataSourceConfig();
-    const response = await fetch(`${config.apiBaseUrl}/system/check/agv`, {
+    // 使用代理路径，而不是直接访问小车服务器
+    const response = await fetch(`${config.baseUrl}/system/check/agv`, {
       method: 'GET',
       timeout: 5000
     });

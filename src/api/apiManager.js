@@ -121,10 +121,16 @@ export const uploadFlaw = (id) => {
   return api.uploadFlaw(id);
 };
 
-// 实时数据接口 - 只使用小车数据源
+// 实时数据接口 - 根据数据源选择
 export const getLiveFlawInfo = (taskId) => {
-  // 实时获取故障信息只在小车数据源中可用
-  return carApi.getLiveFlawInfo(taskId);
+  const api = getApi();
+  if (api === jincangApi) {
+    // 本地数据源使用getFlawList获取故障信息
+    return api.getFlawList({ taskId });
+  } else {
+    // 小车数据源使用实时接口
+    return carApi.getLiveFlawInfo(taskId);
+  }
 };
 
 export const checkAllFlawsConfirmed = (taskId) => {
@@ -157,16 +163,40 @@ export const getAgvHeartbeat = () => {
   return carApi.getAgvHeartbeat();
 };
 
+// 任务详情接口 - 根据数据源选择
 export const getTaskDetails = (taskId) => {
-  return carApi.getTaskDetails(taskId);
+  const api = getApi();
+  if (api === jincangApi) {
+    // 本地数据源使用getTaskDetail
+    return api.getTaskDetail(taskId);
+  } else {
+    // 小车数据源使用getTaskDetails
+    return carApi.getTaskDetails(taskId);
+  }
 };
 
+// 故障列表接口 - 根据数据源选择
 export const getFlawList = (taskId) => {
-  return carApi.getFlawList(taskId);
+  const api = getApi();
+  if (api === jincangApi) {
+    // 本地数据源使用getFlawList
+    return api.getFlawList({ taskId });
+  } else {
+    // 小车数据源使用getFlawList
+    return carApi.getFlawList(taskId);
+  }
 };
 
+// 故障详情接口 - 根据数据源选择
 export const getFlawDetails = (flawId) => {
-  return carApi.getFlawDetails(flawId);
+  const api = getApi();
+  if (api === jincangApi) {
+    // 本地数据源使用getFlawDetail
+    return api.getFlawDetail(flawId);
+  } else {
+    // 小车数据源使用getFlawDetails
+    return carApi.getFlawDetails(flawId);
+  }
 };
 
 export const updateFlaw_vehicle = (flawData) => {

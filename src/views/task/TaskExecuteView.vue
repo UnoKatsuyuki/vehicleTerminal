@@ -225,7 +225,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import {
   getDeviceList, getTaskDetails, getFlawList, getFlawDetails,
   updateFlaw_vehicle, agvForward, agvStop, agvBackward, getAgvHeartbeat,
-  getVideoStreamUrl, endTask, addFlaw,
+  getVideoStreamUrl, endTask, addFlaw, updateFlaw,
   getLiveFlawInfo
 } from '@/api/apiManager.js';
 import { updateTask } from '@/api/apiManager.js';
@@ -387,11 +387,12 @@ const pollTaskDetails = async () => {
   if (!currentTaskId.value) return;
   try {
     const taskData = await getTaskDetails(currentTaskId.value);
+    console.log('获取到的任务详情:', taskData);
     if (taskData) {
-      taskNumber.value = taskData.taskCode;
-      totalDistance.value = Number(taskData.taskTrip) || 0;
-      // distance.value = taskData.currentDistance;
-      taskStatus.value = taskData.taskStatus;
+      // 处理不同数据源的字段差异
+      taskNumber.value = taskData.taskCode || taskData.taskNumber || '未知';
+      totalDistance.value = Number(taskData.taskTrip) || Number(taskData.totalDistance) || 0;
+      taskStatus.value = taskData.taskStatus || taskData.status || '未知';
     }
   } catch (error) {
     console.error("轮询任务详情失败:", error);
@@ -416,17 +417,28 @@ const pollFlawList = async () => {
   if (!currentTaskId.value) return;
   try {
     const liveFlaws = await getLiveFlawInfo(currentTaskId.value);
-    console.log('liveFlaws:', liveFlaws);
+    console.log('获取到的故障信息:', liveFlaws);
+
+    // 处理不同数据源的响应格式
     if (Array.isArray(liveFlaws)) {
+      // 直接是数组格式
       flaws.value = liveFlaws;
     } else if (liveFlaws && Array.isArray(liveFlaws.rows)) {
+      // TableDataInfo格式 { rows: [...], total: number }
       flaws.value = liveFlaws.rows;
+    } else if (liveFlaws && Array.isArray(liveFlaws.data)) {
+      // 本地API格式 { data: [...], total: number }
+      flaws.value = liveFlaws.data;
     } else {
       flaws.value = [];
     }
+
+    console.log('处理后的故障列表:', flaws.value);
   } catch (error) {
     console.error('实时获取故障信息失败:', error);
+    flaws.value = [];
   }
+
   // 自动弹出第一个未shown的故障详情弹窗，并截图
   const unshownFlaw = flaws.value.find(f => !f.shown);
   if (unshownFlaw && !isModalVisible.value) {
@@ -453,13 +465,16 @@ const captureScreenshot = async () => {
 const viewFlawDetail = async (flaw) => {
   try {
     const flawDetails = await getFlawDetails(flaw.id);
+    console.log('获取到的故障详情:', flawDetails);
     if(flawDetails){
         selectedFlaw.value = flawDetails;
         isModalVisible.value = true;
     }
   } catch (error) {
     console.error("获取缺陷详情失败:", error);
-    console.error('获取缺陷详情失败!');
+    // 如果获取详情失败，直接使用当前故障信息
+    selectedFlaw.value = flaw;
+    isModalVisible.value = true;
   }
 };
 
@@ -468,7 +483,19 @@ const markFlawAsShown = async () => {
     if (selectedFlaw.value.shown === false) {
         try {
             selectedFlaw.value.shown = true;
-            await updateFlaw_vehicle(selectedFlaw.value);
+
+            // 根据数据源选择不同的更新方法
+            const { getCurrentDataSourceInfo } = await import('@/api/apiManager.js');
+            const dataSourceInfo = getCurrentDataSourceInfo();
+
+            if (dataSourceInfo.isLocal) {
+              // 本地数据源使用updateFlaw
+              await updateFlaw(selectedFlaw.value);
+            } else {
+              // 小车数据源使用updateFlaw_vehicle
+              await updateFlaw_vehicle(selectedFlaw.value);
+            }
+
             console.log(`缺陷 ${selectedFlaw.value.id} 已标记为"已提示"`);
         } catch (error) {
             console.error("标记缺陷为已读失败:", error);
@@ -485,8 +512,20 @@ const closeFlawModal = async () => {
 const handleUpdateFlaw = async () => {
   if (!selectedFlaw.value) return;
   try {
-    console.log('selectedFlaw',selectedFlaw.value)
-    await addFlaw(selectedFlaw.value);
+    console.log('准备保存的故障信息:', selectedFlaw.value);
+
+    // 根据数据源选择不同的更新方法
+    const { getCurrentDataSourceInfo } = await import('@/api/apiManager.js');
+    const dataSourceInfo = getCurrentDataSourceInfo();
+
+    if (dataSourceInfo.isLocal) {
+      // 本地数据源使用updateFlaw
+      await updateFlaw(selectedFlaw.value);
+    } else {
+      // 小车数据源使用addFlaw
+      await addFlaw(selectedFlaw.value);
+    }
+
     selectedFlaw.value.shown = true;
     ElMessage.success('缺陷已保存并上传！');
     closeFlawModal();
@@ -508,13 +547,24 @@ const onConfirmComplete = async () => {
   completeDialogVisible.value = false;
   try {
     await endTask(currentTaskId.value, false);
-    // 获取最新任务详情，更新状态为待上传
-    const taskData = await getTaskDetails(currentTaskId.value);
-    if (taskData) {
-      const updated = { ...taskData, taskStatus: '待上传' };
-      await updateTask(updated);
+
+    // 根据数据源选择不同的更新方式
+    const { getCurrentDataSourceInfo } = await import('@/api/apiManager.js');
+    const dataSourceInfo = getCurrentDataSourceInfo();
+
+    if (dataSourceInfo.isLocal) {
+      // 本地数据源：获取最新任务详情，更新状态为待上传
+      const taskData = await getTaskDetails(currentTaskId.value);
+      if (taskData) {
+        const updated = { ...taskData, taskStatus: '待上传' };
+        await updateTask(updated);
+        taskStatus.value = '待上传';
+      }
+    } else {
+      // 小车数据源：直接更新状态
       taskStatus.value = '待上传';
     }
+
     ElMessage.success('任务已完成!');
     setTimeout(() => {
       router.back();

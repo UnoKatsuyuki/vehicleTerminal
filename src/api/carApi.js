@@ -54,7 +54,8 @@ export const getDeviceList = () => {
     headers: myHeaders,
     redirect: "follow",
   };
-  return fetch(`${CAMERA_API_BASE_URL}/devices?page=1&size=999&status=&id&name`, requestOptions)
+  // 使用代理路径，而不是直接访问小车服务器
+  return fetch(`/easy-api/devices?page=1&size=999&status=&id&name`, requestOptions)
     .then((response) => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -93,7 +94,7 @@ export const getFlawDetails = (flawId) => {
 // ===================== index.js =====================
 // 使用代理路径
 const apiClient = async (endpoint) => {
-  const response = await fetch(`${AGV_API_BASE_URL}${endpoint}`);
+  const response = await fetch(`/prod-api${endpoint}`);
   if (!response.ok) {
     throw new Error(`网络响应错误: ${response.status} ${response.statusText}`);
   }
@@ -195,7 +196,8 @@ export const startTask = (taskId) => {
 };
 export const getVideoStreamUrl = (deviceId) => {
   if (!deviceId) return '';
-  return `${STREAM_MEDIA_URL}/live/${deviceId}_01.flv`;
+  // 使用代理路径，而不是直接访问小车服务器
+  return `/webrtc-api/live/${deviceId}_01.flv`;
 };
 export function addFlaw(data) {
   return agvApiClient.post('/agv/flaw', data);

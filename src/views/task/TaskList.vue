@@ -128,23 +128,34 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="任务编号" prop="taskCode">
-                <el-input
-                  v-model="form.taskCode"
-                  :placeholder="taskCodeSelection === 'auto' ? '' : '请输入自定义编号'"
-                  :disabled="!!form.id"
-                  class="input-with-select"
-                >
-                  <template #prepend>
-                    <el-select
-                      v-model="taskCodeSelection"
-                      :disabled="!!form.id"
-                      style="width: 110px"
-                    >
-                      <el-option label="自动生成" value="auto" />
-                      <el-option label="自定义" value="custom" />
-                    </el-select>
-                  </template>
-                </el-input>
+                <div style="display: flex; gap: 8px;">
+                  <el-input
+                    v-model="form.taskCode"
+                    :placeholder="taskCodeSelection === 'auto' ? '' : '请输入自定义编号'"
+                    :disabled="!!form.id"
+                    class="input-with-select"
+                    style="flex: 1;"
+                  >
+                    <template #prepend>
+                      <el-select
+                        v-model="taskCodeSelection"
+                        :disabled="!!form.id"
+                        style="width: 110px"
+                      >
+                        <el-option label="自动生成" value="auto" />
+                        <el-option label="自定义" value="custom" />
+                      </el-select>
+                    </template>
+                  </el-input>
+                  <el-button
+                    v-if="taskCodeSelection === 'auto' && !form.id"
+                    type="primary"
+                    @click="regenerateTaskCode"
+                    style="white-space: nowrap;"
+                  >
+                    重新生成
+                  </el-button>
+                </div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -261,12 +272,20 @@ const taskFormRef = ref(null);
 const taskCodeSelection = ref('auto');
 
 // --- 任务编号占位符和自动完成 ---
-const taskCodePlaceholder = computed(() => {
+const generateTaskCode = () => {
   const date = new Date();
   const year = date.getFullYear();
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const day = date.getDate().toString().padStart(2, '0');
-  return `TASK-${year}${month}${day}`;
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const seconds = date.getSeconds().toString().padStart(2, '0');
+
+  return `TASK-${year}${month}${day}${hours}${minutes}${seconds}`;
+};
+
+const taskCodePlaceholder = computed(() => {
+  return generateTaskCode();
 });
 
 // --- 监听任务编号模式变化 ---
@@ -276,7 +295,8 @@ watch(taskCodeSelection, (newValue) => {
     return;
   }
   if (newValue === 'auto') {
-    form.value.taskCode = taskCodePlaceholder.value;
+    // 切换到自动模式时重新生成任务编号
+    form.value.taskCode = generateTaskCode();
   } else {
     form.value.taskCode = '';
   }
@@ -298,6 +318,14 @@ const handleDataSourceChange = async (value) => {
   } catch (error) {
     console.error('切换数据源失败:', error);
     ElMessage.error('切换数据源失败，请重试');
+  }
+};
+
+// --- 重新生成任务编号方法 ---
+const regenerateTaskCode = () => {
+  if (taskCodeSelection.value === 'auto' && !form.value.id) {
+    form.value.taskCode = generateTaskCode();
+    ElMessage.success('任务编号已重新生成');
   }
 };
 
@@ -450,7 +478,25 @@ async function getList() {
     }
   } catch (error) {
     console.error("获取任务列表失败:", error);
-    ElMessage.error(`获取任务列表时出错: ${error.message}`);
+    console.error("错误详情:", {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      method: error.config?.method,
+      baseURL: error.config?.baseURL
+    });
+
+    // 提供更详细的错误信息
+    let errorMessage = '获取任务列表失败';
+    if (error.response?.status) {
+      errorMessage += ` (HTTP ${error.response.status})`;
+    }
+    if (error.message) {
+      errorMessage += `: ${error.message}`;
+    }
+
+    ElMessage.error(errorMessage);
     taskList.value = [];
     total.value = 0;
   } finally {
@@ -491,7 +537,8 @@ function cancel() {
 function handleCreate() {
   resetForm();
   taskCodeSelection.value = 'auto'; // 恢复默认选项
-  form.value.taskCode = taskCodePlaceholder.value; // 设置初始值
+  // 每次新增时重新生成任务编号
+  form.value.taskCode = generateTaskCode();
   dialog.open = true;
   dialog.title = "新增任务";
 }
@@ -534,6 +581,18 @@ function handleDelete(id, taskCode) {
 // 提交按钮
 async function submitForm() {
   await taskFormRef.value.validate();
+
+  // 检查任务编号唯一性（仅新增时检查）
+  if (!form.value.id) {
+    const isDuplicate = taskList.value.some(task =>
+      task.taskCode === form.value.taskCode && task.id !== form.value.id
+    );
+    if (isDuplicate) {
+      ElMessage.error('任务编号已存在，请重新生成或使用其他编号');
+      return;
+    }
+  }
+
   if (form.value.id != null) {
     await updateTask(form.value);
     ElMessage.success("修改成功");

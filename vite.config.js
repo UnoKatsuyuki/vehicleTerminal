@@ -38,6 +38,18 @@ export default defineConfig({
         changeOrigin: true,
         secure: false
       },
+      // 代理摄像头API请求
+      '/easy-api': {
+        target: 'http://192.168.2.57',
+        changeOrigin: true,
+        secure: false
+      },
+      // 代理流媒体API请求
+      '/webrtc-api': {
+        target: 'http://192.168.2.57',
+        changeOrigin: true,
+        secure: false
+      },
       // 代理本地API请求
       '/local-api': {
         target: 'http://localhost:8080',
