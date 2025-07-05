@@ -4,8 +4,8 @@ import axios from 'axios';
 import { extractTimeFormat } from 'element-plus';
 import request from '@/utils/request';
 
-// vehicle.js 常量
-const AGV_API_BASE_URL = 'http://192.168.2.57/prod-api';
+// vehicle.js 常量 - 使用代理路径避免跨域
+const AGV_API_BASE_URL = '/prod-api';
 const CAMERA_API_BASE_URL = 'http://192.168.2.57/easy-api';
 const STREAM_MEDIA_URL = 'http://192.168.2.57/webrtc-api';
 
@@ -91,9 +91,9 @@ export const getFlawDetails = (flawId) => {
 };
 
 // ===================== index.js =====================
-const BASE_URL = 'http://192.168.2.57/prod-api';
+// 使用代理路径
 const apiClient = async (endpoint) => {
-  const response = await fetch(`${BASE_URL}${endpoint}`);
+  const response = await fetch(`${AGV_API_BASE_URL}${endpoint}`);
   if (!response.ok) {
     throw new Error(`网络响应错误: ${response.status} ${response.statusText}`);
   }
@@ -200,6 +200,7 @@ export const getVideoStreamUrl = (deviceId) => {
 export function addFlaw(data) {
   return agvApiClient.post('/agv/flaw', data);
 }
+
 export const getLiveFlawInfo = (taskId) => {
   return agvApiClient.get(`/agv/flaw/live/${taskId}`);
 };

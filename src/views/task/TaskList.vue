@@ -67,6 +67,7 @@
       <div class="toolbar">
         <el-button type="primary" @click="handleCreate">新增任务</el-button>
         <el-button type="info" @click="testApiConnection" :loading="testingConnection">测试API连接</el-button>
+        <el-button type="warning" @click="handleResetDataSource" :loading="resettingDataSource">重置数据源</el-button>
       </div>
 
       <!-- 4. 数据表格 -->
@@ -197,7 +198,8 @@ import {
   useDataSourceState,
   switchDataSource,
   DataSourceType,
-  getCurrentDataSourceConfig
+  getCurrentDataSourceConfig,
+  resetDataSource
 } from '@/utils/dataSourceManager';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Monitor, Van } from '@element-plus/icons-vue';
@@ -219,6 +221,7 @@ const loading = ref(true);
 const taskList = ref([]);
 const total = ref(0);
 const testingConnection = ref(false);
+const resettingDataSource = ref(false);
 
 const queryParams = reactive({
   pageNum: 1,
@@ -295,6 +298,26 @@ const handleDataSourceChange = async (value) => {
   } catch (error) {
     console.error('切换数据源失败:', error);
     ElMessage.error('切换数据源失败，请重试');
+  }
+};
+
+// --- 重置数据源方法 ---
+const handleResetDataSource = async () => {
+  resettingDataSource.value = true;
+  try {
+    const result = resetDataSource();
+    if (result.success) {
+      ElMessage.success(result.message);
+      // 重新加载任务列表
+      getList();
+    } else {
+      ElMessage.error(result.message);
+    }
+  } catch (error) {
+    console.error('重置数据源失败:', error);
+    ElMessage.error('重置数据源失败，请重试');
+  } finally {
+    resettingDataSource.value = false;
   }
 };
 

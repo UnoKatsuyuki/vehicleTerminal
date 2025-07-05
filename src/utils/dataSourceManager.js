@@ -120,6 +120,30 @@ export const testVehicleConnection = async () => {
   }
 };
 
+// 重置数据源到默认设置
+export const resetDataSource = () => {
+  // 清除本地存储
+  localStorage.removeItem('currentDataSource');
+
+  // 重置为小车数据源
+  currentDataSource.value = DataSourceType.VEHICLE;
+  localStorage.setItem('currentDataSource', DataSourceType.VEHICLE);
+
+  // 重置连接状态
+  dataSourceState.isConnected = false;
+  dataSourceState.connectionError = null;
+
+  // 尝试连接小车
+  testVehicleConnection().catch(error => {
+    console.warn('小车连接失败，但保持小车数据源设置:', error);
+  });
+
+  return {
+    success: true,
+    message: '已重置为默认的小车数据源'
+  };
+};
+
 // 获取数据源状态
 export const getDataSourceState = () => {
   return {
@@ -132,12 +156,15 @@ export const getDataSourceState = () => {
 
 // 初始化数据源
 export const initializeDataSource = () => {
-  // 从本地存储恢复数据源类型，如果没有保存过则使用默认的小车数据源
+  // 从本地存储恢复数据源类型
   const savedDataSource = localStorage.getItem('currentDataSource');
-  if (savedDataSource && dataSourceConfigs[savedDataSource]) {
-    currentDataSource.value = savedDataSource;
+
+  // 只有在用户明确选择过本地数据源时才使用本地数据源
+  // 否则默认使用小车数据源
+  if (savedDataSource === DataSourceType.LOCAL && dataSourceConfigs[DataSourceType.LOCAL]) {
+    currentDataSource.value = DataSourceType.LOCAL;
   } else {
-    // 如果没有保存过，默认使用小车数据源
+    // 默认使用小车数据源
     currentDataSource.value = DataSourceType.VEHICLE;
     localStorage.setItem('currentDataSource', DataSourceType.VEHICLE);
   }
