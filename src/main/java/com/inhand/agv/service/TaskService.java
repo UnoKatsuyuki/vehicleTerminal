@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import javax.persistence.criteria.Predicate;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -77,13 +78,16 @@ public class TaskService {
             throw new IllegalArgumentException(validation.getMessage());
         }
 
-        if (taskRepository.findByTaskCode(taskDTO.getTaskCode()).isPresent()) {
-            throw new IllegalArgumentException("任务编号 '" + taskDTO.getTaskCode() + "' 已存在，请使用其他编号。");
-        }
+        //if (taskRepository.findByTaskCode(taskDTO.getTaskCode()).isPresent()) {
+            //throw new IllegalArgumentException("任务编号 '" + taskDTO.getTaskCode() + "' 已存在，请使用其他编号。");
+        //}
 
         AgvTask task = new AgvTask();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
+        String generatedTaskCode = "TASK-" + sdf.format(new Date());
+        task.setTaskCode(generatedTaskCode);
+
         // 设置DTO中的字段
-        task.setTaskCode(taskDTO.getTaskCode());
         task.setTaskName(taskDTO.getTaskName());
         task.setStartPos(taskDTO.getStartPos());
         task.setTaskTrip(taskDTO.getTaskTrip());
@@ -99,10 +103,10 @@ public class TaskService {
         AgvTask savedTask = taskRepository.save(task);
 
         // 如果任务编号依赖于ID，可以在保存后再次更新并保存
-        if (savedTask.getTaskCode() == null || savedTask.getTaskCode().isEmpty()) {
-            savedTask.setTaskCode("TASK-" + String.format("%04d", savedTask.getId()));
-            taskRepository.save(savedTask); // 再次保存以更新任务编号
-        }
+        //if (savedTask.getTaskCode() == null || savedTask.getTaskCode().isEmpty()) {
+            //savedTask.setTaskCode("TASK-" + String.format("%04d", savedTask.getId()));
+            //taskRepository.save(savedTask); // 再次保存以更新任务编号
+        //}
 
         return savedTask;
     }
