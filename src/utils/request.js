@@ -32,8 +32,6 @@ service.interceptors.response.use(
    */
   response => {
     const res = response.data;
-    console.log('request.js 响应拦截器收到数据:', res);
-    console.log('code类型:', typeof res.code, '值:', res.code);
     // code 不为 200 则判定为错误（支持字符串和数字类型）
     if (res.code !== 200 && res.code !== '200') {
       ElMessage({

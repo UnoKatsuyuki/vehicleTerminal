@@ -468,7 +468,7 @@ const testApiConnection = async () => {
 };
 
 // --- 方法定义 ---
-onMounted(() => {
+onMounted(async () => {
   // 【新】页面加载时，安全地恢复页码
   const savedPageNum = sessionStorage.getItem('taskListPageNum');
   if (savedPageNum) {
@@ -480,6 +480,11 @@ onMounted(() => {
     sessionStorage.removeItem('taskListPageNum');
   }
 
+  // 等待数据源初始化完成
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // 确保数据源已正确初始化后再加载数据
+  console.log('页面初始化完成，当前数据源:', currentDataSourceInfo.value);
   getList();
 });
 
