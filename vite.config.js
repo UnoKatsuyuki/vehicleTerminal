@@ -32,9 +32,14 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     proxy: {
-      // 代理API请求和图片请求
+      // 代理小车API请求
       '/prod-api': {
         target: 'http://192.168.2.57',
+        changeOrigin: true,
+      },
+      // 代理本地API请求
+      '/local-api': {
+        target: 'http://localhost:8080',
         changeOrigin: true,
       }
     }

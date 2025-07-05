@@ -14,7 +14,32 @@
         </template>
       </el-page-header>
 
-      <!-- 2. 搜索表单 -->
+      <!-- 2. 数据源切换开关 -->
+      <div class="data-source-switch">
+        <el-card shadow="never" class="switch-card">
+          <div class="switch-content">
+            <div class="switch-info">
+              <el-icon class="switch-icon" :class="{ 'local': isLocalDataSource, 'vehicle': !isLocalDataSource }">
+                <component :is="isLocalDataSource ? 'Monitor' : 'Van'" />
+              </el-icon>
+              <div class="switch-text">
+                <div class="switch-title">{{ currentDataSourceInfo.name }}</div>
+                <div class="switch-desc">{{ currentDataSourceInfo.description }}</div>
+              </div>
+            </div>
+            <el-switch
+              v-model="isLocalDataSource"
+              active-text="本地数据源"
+              inactive-text="小车数据源"
+              :loading="isDataSourceChanging"
+              @change="handleDataSourceChange"
+              class="data-source-switch"
+            />
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 3. 搜索表单 -->
       <div class="search-form-container">
         <el-form :model="queryParams" ref="queryFormRef" :inline="true" label-position="top">
           <el-form-item label="任务编号" prop="taskCode">
@@ -163,10 +188,29 @@
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { listTask, addTask, updateTask, delTask, getTask } from '@/api/carApi.js';
+import {
+  listTask, addTask, updateTask, delTask, getTask,
+  getCurrentDataSourceInfo
+} from '@/api/apiManager.js';
+import {
+  useDataSourceState,
+  switchDataSource,
+  DataSourceType
+} from '@/utils/dataSourceManager';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { Monitor, Van } from '@element-plus/icons-vue';
 
 const router = useRouter();
+
+// --- 数据源相关状态 ---
+const { currentDataSource, isDataSourceChanging, dataSourceState } = useDataSourceState();
+const currentDataSourceInfo = computed(() => getCurrentDataSourceInfo());
+const isLocalDataSource = computed({
+  get: () => currentDataSource.value === DataSourceType.LOCAL,
+  set: (value) => {
+    // 这个setter不会被直接调用，通过handleDataSourceChange处理
+  }
+});
 
 // --- 响应式状态定义 ---
 const loading = ref(true);
@@ -231,6 +275,25 @@ watch(taskCodeSelection, (newValue) => {
     form.value.taskCode = '';
   }
 });
+
+// --- 数据源切换方法 ---
+const handleDataSourceChange = async (value) => {
+  const targetDataSource = value ? DataSourceType.LOCAL : DataSourceType.VEHICLE;
+
+  try {
+    const result = await switchDataSource(targetDataSource);
+    if (result.success) {
+      ElMessage.success(result.message);
+      // 重新加载任务列表
+      getList();
+    } else {
+      ElMessage.error(result.message);
+    }
+  } catch (error) {
+    console.error('切换数据源失败:', error);
+    ElMessage.error('切换数据源失败，请重试');
+  }
+};
 
 // --- 方法定义 ---
 onMounted(() => {
@@ -438,6 +501,65 @@ function getStatusTagType(status) {
   margin-bottom: 20px;
   padding: 0;
 }
+.data-source-switch {
+  margin-bottom: 20px;
+}
+
+.switch-card {
+  border: 1px solid #e4e7ed;
+}
+
+.switch-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+}
+
+.switch-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.switch-icon {
+  font-size: 24px;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.switch-icon.local {
+  color: #409eff;
+  background-color: #ecf5ff;
+}
+
+.switch-icon.vehicle {
+  color: #67c23a;
+  background-color: #f0f9ff;
+}
+
+.switch-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.switch-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.switch-desc {
+  font-size: 12px;
+  color: #909399;
+}
+
+.data-source-switch {
+  transform: scale(1.1);
+}
+
 .search-form-container {
   background: #fafafa;
   padding: 20px;

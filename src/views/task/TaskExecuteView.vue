@@ -227,8 +227,8 @@ import {
   updateFlaw_vehicle, agvForward, agvStop, agvBackward, getAgvHeartbeat,
   getVideoStreamUrl, endTask, addFlaw,
   getLiveFlawInfo
-} from '@/api/carApi.js';
-import { updateTask } from '@/api/taskApi';
+} from '@/api/apiManager.js';
+import { updateTask } from '@/api/apiManager.js';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue';

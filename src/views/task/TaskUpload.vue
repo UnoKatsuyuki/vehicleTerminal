@@ -75,7 +75,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { getTask, preUploadTask, uploadTask, updateFlaw } from '@/api/carApi.js';
+import { getTask, preUploadTask, uploadTask, updateFlaw } from '@/api/apiManager.js';
 import { ElMessage } from 'element-plus';
 import { ArrowLeft, CircleCheck, Loading, CircleClose } from '@element-plus/icons-vue';
 

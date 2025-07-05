@@ -51,7 +51,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { CircleCheckFilled, CircleCloseFilled, Loading, Setting } from '@element-plus/icons-vue';
 // 导入真实的API函数
-import { checkFs, checkDb, checkAgv, checkCam } from '@/api/carApi.js';
+import { checkFs, checkDb, checkAgv, checkCam } from '@/api/apiManager.js';
 
 const router = useRouter();
 const showSettingsModal = ref(false);
