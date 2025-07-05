@@ -10,13 +10,17 @@ const localApiClient = axios.create({
   timeout: 15000,
 });
 
-// 响应拦截器 - 按照carApi.js的规范
+// 响应拦截器 - 按照carApi.js的规范，但正确处理TableDataInfo格式
 localApiClient.interceptors.response.use(
   response => {
     if (response.data) {
       if (typeof response.data.code !== 'undefined') {
         if (response.data.code === 200 || response.data.code === 0) {
-          return response.data.data;
+          // 对于列表查询 (TableDataInfo)，返回整个对象，包含 total 和 rows
+          if (response.data.rows !== undefined && response.data.total !== undefined) {
+            return response.data; // 返回 TableDataInfo 结构 { total, rows, code, msg }
+          }
+          return response.data.data; // 对于其他操作，返回 data 字段
         } else {
           console.error('本地API 业务错误:', response.data);
           return Promise.reject(new Error(response.data.msg || `操作失败，业务代码: ${response.data.code}`));

@@ -196,7 +196,8 @@ import {
 import {
   useDataSourceState,
   switchDataSource,
-  DataSourceType
+  DataSourceType,
+  getCurrentDataSourceConfig
 } from '@/utils/dataSourceManager';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Monitor, Van } from '@element-plus/icons-vue';
@@ -305,25 +306,36 @@ const testApiConnection = async () => {
     console.log('当前数据源:', currentDataSourceInfo.value);
     console.log('当前数据源配置:', getCurrentDataSourceConfig());
 
-    // 直接测试axios请求
+    // 测试1：直接访问后端（不使用代理）
+    console.log('=== 测试1：直接访问后端 ===');
     const axios = await import('axios');
+    try {
+      const directBackendResponse = await axios.default.get('http://localhost:8080/agv/task/list?pageNum=1&pageSize=5');
+      console.log('直接访问后端成功:', directBackendResponse.data);
+    } catch (directBackendError) {
+      console.error('直接访问后端失败:', directBackendError.message);
+      console.error('错误状态:', directBackendError.response?.status);
+    }
+
+    // 测试2：通过代理访问
+    console.log('=== 测试2：通过代理访问 ===');
     const testUrl = '/local-api/agv/task/list?pageNum=1&pageSize=5';
     console.log('测试请求URL:', testUrl);
 
     try {
-      const directResponse = await axios.default.get(testUrl);
-      console.log('=== 直接axios请求结果 ===');
-      console.log('响应状态:', directResponse.status);
-      console.log('响应头:', directResponse.headers);
-      console.log('原始响应数据:', directResponse.data);
-    } catch (directError) {
-      console.error('直接axios请求失败:', directError);
-      console.error('错误详情:', directError.response?.data);
-      console.error('错误状态:', directError.response?.status);
+      const proxyResponse = await axios.default.get(testUrl);
+      console.log('=== 代理请求结果 ===');
+      console.log('响应状态:', proxyResponse.status);
+      console.log('响应头:', proxyResponse.headers);
+      console.log('原始响应数据:', proxyResponse.data);
+    } catch (proxyError) {
+      console.error('代理请求失败:', proxyError);
+      console.error('错误详情:', proxyError.response?.data);
+      console.error('错误状态:', proxyError.response?.status);
     }
 
-    // 测试通过apiManager的请求
-    console.log('=== 通过apiManager测试 ===');
+    // 测试3：通过apiManager的请求
+    console.log('=== 测试3：通过apiManager测试 ===');
     const response = await listTask({ pageNum: 1, pageSize: 5 });
 
     console.log('=== API响应详情 ===');
@@ -335,7 +347,7 @@ const testApiConnection = async () => {
       console.log('响应对象的值:', response);
     }
 
-    ElMessage.success('API连接测试成功，请查看控制台输出');
+    ElMessage.success('API连接测试完成，请查看控制台输出');
   } catch (error) {
     console.error('API连接测试失败:', error);
     console.error('错误详情:', error.response?.data);
