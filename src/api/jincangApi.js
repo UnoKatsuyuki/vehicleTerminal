@@ -14,14 +14,20 @@ const localApiClient = axios.create({
 localApiClient.interceptors.response.use(
   response => {
     if (response.data) {
+      // 处理标准AjaxResult格式：{ code: 200, data: {...}, msg: "..." }
       if (typeof response.data.code !== 'undefined') {
         if (response.data.code === 200 || response.data.code === 0) {
+          // 对于列表查询，保持完整的TableDataInfo格式
+          if (response.data.data && response.data.data.rows && typeof response.data.data.total !== 'undefined') {
+            return response.data.data; // 返回 { rows: [...], total: number }
+          }
           return response.data.data;
         } else {
           console.error('本地API 业务错误:', response.data);
           return Promise.reject(new Error(response.data.msg || `操作失败，业务代码: ${response.data.code}`));
         }
       }
+      // 处理success格式：{ success: true, data: {...} }
       if (typeof response.data.success !== 'undefined') {
         if (response.data.success) {
           return response.data.data || response.data;
@@ -29,6 +35,7 @@ localApiClient.interceptors.response.use(
           return Promise.reject(new Error(response.data.msg || '操作失败'));
         }
       }
+      // 直接返回数据
       return response.data;
     }
     return Promise.reject(new Error('无效的响应'));

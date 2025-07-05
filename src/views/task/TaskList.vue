@@ -66,6 +66,7 @@
       <!-- 3. 操作栏 -->
       <div class="toolbar">
         <el-button type="primary" @click="handleCreate">新增任务</el-button>
+        <el-button type="info" @click="testApiConnection" :loading="testingConnection">测试API连接</el-button>
       </div>
 
       <!-- 4. 数据表格 -->
@@ -216,6 +217,7 @@ const isLocalDataSource = computed({
 const loading = ref(true);
 const taskList = ref([]);
 const total = ref(0);
+const testingConnection = ref(false);
 
 const queryParams = reactive({
   pageNum: 1,
@@ -295,6 +297,33 @@ const handleDataSourceChange = async (value) => {
   }
 };
 
+// --- 测试API连接方法 ---
+const testApiConnection = async () => {
+  testingConnection.value = true;
+  try {
+    console.log('=== 开始测试API连接 ===');
+    console.log('当前数据源:', currentDataSourceInfo.value);
+
+    const response = await listTask({ pageNum: 1, pageSize: 5 });
+
+    console.log('=== API响应详情 ===');
+    console.log('原始响应:', response);
+    console.log('响应类型:', typeof response);
+    console.log('是否为数组:', Array.isArray(response));
+    if (response && typeof response === 'object') {
+      console.log('响应对象的键:', Object.keys(response));
+      console.log('响应对象的值:', response);
+    }
+
+    ElMessage.success('API连接测试成功，请查看控制台输出');
+  } catch (error) {
+    console.error('API连接测试失败:', error);
+    ElMessage.error(`API连接测试失败: ${error.message}`);
+  } finally {
+    testingConnection.value = false;
+  }
+};
+
 // --- 方法定义 ---
 onMounted(() => {
   // 【新】页面加载时，安全地恢复页码
@@ -319,21 +348,53 @@ async function getList() {
 
     // 增加调试日志，查看从API获取的原始数据
     console.log("从后端接收到的任务列表响应:", response);
+    console.log("响应类型:", typeof response);
+    console.log("是否为数组:", Array.isArray(response));
+    if (response && typeof response === 'object') {
+      console.log("响应对象的键:", Object.keys(response));
+    }
 
-    // 增加防御性代码，检查response和其属性是否存在
-    if (response && response.rows && typeof response.total !== 'undefined') {
-      taskList.value = response.rows;
-      total.value = response.total;
+    // 处理不同的API响应格式
+    if (response) {
+      // 小车API格式：{ rows: [...], total: number }
+      if (response.rows && typeof response.total !== 'undefined') {
+        taskList.value = response.rows;
+        total.value = response.total;
+      }
+      // 本地API格式：直接是数组或者 { data: [...], total: number }
+      else if (Array.isArray(response)) {
+        taskList.value = response;
+        total.value = response.length;
+      }
+      // 本地API格式：{ data: [...], total: number }
+      else if (response.data && Array.isArray(response.data)) {
+        taskList.value = response.data;
+        total.value = response.total || response.data.length;
+      }
+      // 其他格式，尝试作为数组处理
+      else if (typeof response === 'object') {
+        console.warn("未知的API响应格式，尝试作为数组处理:", response);
+        const dataArray = Object.values(response).find(item => Array.isArray(item));
+        if (dataArray) {
+          taskList.value = dataArray;
+          total.value = dataArray.length;
+        } else {
+          throw new Error("无法解析API响应格式");
+        }
+      }
+      else {
+        throw new Error("API响应格式不正确");
+      }
     } else {
-      // 如果响应格式不正确，则清空表格并提示
-      console.error("API响应格式不正确:", response);
-      ElMessage.error("获取任务列表失败，数据格式错误。");
+      // 响应为空，设置为空数组
       taskList.value = [];
       total.value = 0;
     }
   } catch (error) {
     console.error("获取任务列表失败:", error);
     ElMessage.error(`获取任务列表时出错: ${error.message}`);
+    taskList.value = [];
+    total.value = 0;
   } finally {
     loading.value = false;
   }
