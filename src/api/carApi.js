@@ -113,10 +113,17 @@ export const checkCam = () => apiClient('/system/check/cam');
 // ===================== taskApi.js =====================
 // 任务相关
 export function listTask(params) {
+  console.log('carApi.listTask 被调用，参数:', params);
   return request({
     url: '/agv/task/list',
     method: 'get',
     params
+  }).then(response => {
+    console.log('carApi.listTask 成功，响应:', response);
+    return response;
+  }).catch(error => {
+    console.error('carApi.listTask 失败，错误:', error);
+    throw error;
   });
 }
 export function getTask(id) {
