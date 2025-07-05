@@ -357,36 +357,93 @@ const testApiConnection = async () => {
     console.log('当前数据源:', currentDataSourceInfo.value);
     console.log('当前数据源配置:', getCurrentDataSourceConfig());
 
-    // 测试1：直接访问后端（不使用代理）
-    console.log('=== 测试1：直接访问后端 ===');
     const axios = await import('axios');
-    try {
-      const directBackendResponse = await axios.default.get('http://localhost:8080/agv/task/list?pageNum=1&pageSize=5');
-      console.log('直接访问后端成功:', directBackendResponse.data);
-    } catch (directBackendError) {
-      console.error('直接访问后端失败:', directBackendError.message);
-      console.error('错误状态:', directBackendError.response?.status);
+
+    // 根据当前数据源进行不同的测试
+    if (currentDataSource.value === DataSourceType.LOCAL) {
+      // 本地数据源测试
+      console.log('=== 测试本地数据源 ===');
+
+      // 测试1：直接访问后端（不使用代理）
+      console.log('=== 测试1：直接访问后端 ===');
+      try {
+        const directBackendResponse = await axios.default.get('http://localhost:8080/agv/task/list?pageNum=1&pageSize=5');
+        console.log('直接访问后端成功:', directBackendResponse.data);
+      } catch (directBackendError) {
+        console.error('直接访问后端失败:', directBackendError.message);
+        console.error('错误状态:', directBackendError.response?.status);
+      }
+
+      // 测试2：通过代理访问
+      console.log('=== 测试2：通过代理访问 ===');
+      const testUrl = '/local-api/agv/task/list?pageNum=1&pageSize=5';
+      console.log('测试请求URL:', testUrl);
+
+      try {
+        const proxyResponse = await axios.default.get(testUrl);
+        console.log('=== 代理请求结果 ===');
+        console.log('响应状态:', proxyResponse.status);
+        console.log('响应头:', proxyResponse.headers);
+        console.log('原始响应数据:', proxyResponse.data);
+      } catch (proxyError) {
+        console.error('代理请求失败:', proxyError);
+        console.error('错误详情:', proxyError.response?.data);
+        console.error('错误状态:', proxyError.response?.status);
+      }
+    } else {
+      // 小车数据源测试
+      console.log('=== 测试小车数据源 ===');
+
+      // 测试1：系统检查接口
+      console.log('=== 测试1：系统检查接口 ===');
+      try {
+        const systemCheckResponse = await axios.default.get('/prod-api/system/check/agv');
+        console.log('系统检查成功:', systemCheckResponse.data);
+      } catch (systemCheckError) {
+        console.error('系统检查失败:', systemCheckError.message);
+        console.error('错误状态:', systemCheckError.response?.status);
+      }
+
+      // 测试2：任务列表接口
+      console.log('=== 测试2：任务列表接口 ===');
+      try {
+        const taskListResponse = await axios.default.get('/prod-api/agv/task/list?pageNum=1&pageSize=5');
+        console.log('任务列表请求成功:', taskListResponse.data);
+      } catch (taskListError) {
+        console.error('任务列表请求失败:', taskListError.message);
+        console.error('错误状态:', taskListError.response?.status);
+        console.error('错误详情:', taskListError.response?.data);
+      }
+
+      // 测试3：摄像头接口
+      console.log('=== 测试3：摄像头接口 ===');
+      try {
+        const cameraResponse = await axios.default.get('/easy-api/devices?page=1&size=999&status=&id&name', {
+          headers: {
+            'Authorization': 'Basic YWRtaW4xMjM6QWRtaW5AMTIz'
+          }
+        });
+        console.log('摄像头接口成功:', cameraResponse.data);
+      } catch (cameraError) {
+        console.error('摄像头接口失败:', cameraError.message);
+        console.error('错误状态:', cameraError.response?.status);
+      }
     }
 
-    // 测试2：通过代理访问
-    console.log('=== 测试2：通过代理访问 ===');
-    const testUrl = '/local-api/agv/task/list?pageNum=1&pageSize=5';
-    console.log('测试请求URL:', testUrl);
+    // 测试4：网络连接状态
+    console.log('=== 测试4：网络连接状态 ===');
+    console.log('当前网络信息:', {
+      userAgent: navigator.userAgent,
+      onLine: navigator.onLine,
+      connection: navigator.connection ? {
+        effectiveType: navigator.connection.effectiveType,
+        downlink: navigator.connection.downlink,
+        rtt: navigator.connection.rtt
+      } : '不支持'
+    });
 
-    try {
-      const proxyResponse = await axios.default.get(testUrl);
-      console.log('=== 代理请求结果 ===');
-      console.log('响应状态:', proxyResponse.status);
-      console.log('响应头:', proxyResponse.headers);
-      console.log('原始响应数据:', proxyResponse.data);
-    } catch (proxyError) {
-      console.error('代理请求失败:', proxyError);
-      console.error('错误详情:', proxyError.response?.data);
-      console.error('错误状态:', proxyError.response?.status);
-    }
-
-    // 测试3：通过apiManager的请求
-    console.log('=== 测试3：通过apiManager测试 ===');
+    // 测试5：通过apiManager的请求
+    console.log('=== 测试5：通过apiManager测试 ===');
     const response = await listTask({ pageNum: 1, pageSize: 5 });
 
     console.log('=== API响应详情 ===');
