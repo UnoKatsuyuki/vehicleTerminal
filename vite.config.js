@@ -36,11 +36,26 @@ export default defineConfig({
       '/prod-api': {
         target: 'http://192.168.2.57',
         changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/prod-api/, '')
       },
       // 代理本地API请求
       '/local-api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/local-api/, ''),
+        configure: (proxy, options) => {
+          proxy.on('error', (err, req, res) => {
+            console.log('proxy error', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log('Sending Request to the Target:', req.method, req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+          });
+        }
       }
     }
   }
