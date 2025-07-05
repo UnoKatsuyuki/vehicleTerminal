@@ -10,24 +10,18 @@ const localApiClient = axios.create({
   timeout: 15000,
 });
 
-// 响应拦截器
+// 响应拦截器 - 按照carApi.js的规范
 localApiClient.interceptors.response.use(
   response => {
     if (response.data) {
-      // 处理标准AjaxResult格式：{ code: 200, data: {...}, msg: "..." }
       if (typeof response.data.code !== 'undefined') {
         if (response.data.code === 200 || response.data.code === 0) {
-          // 对于列表查询，保持完整的TableDataInfo格式
-          if (response.data.data && response.data.data.rows && typeof response.data.data.total !== 'undefined') {
-            return response.data.data; // 返回 { rows: [...], total: number }
-          }
           return response.data.data;
         } else {
           console.error('本地API 业务错误:', response.data);
           return Promise.reject(new Error(response.data.msg || `操作失败，业务代码: ${response.data.code}`));
         }
       }
-      // 处理success格式：{ success: true, data: {...} }
       if (typeof response.data.success !== 'undefined') {
         if (response.data.success) {
           return response.data.data || response.data;
@@ -35,7 +29,7 @@ localApiClient.interceptors.response.use(
           return Promise.reject(new Error(response.data.msg || '操作失败'));
         }
       }
-      // 直接返回数据
+      console.log(response.data);
       return response.data;
     }
     return Promise.reject(new Error('无效的响应'));
@@ -47,34 +41,24 @@ localApiClient.interceptors.response.use(
 );
 
 // ===================== 任务管理相关接口 =====================
-export function listTask(params) {
+export function getTaskList(params = {}) {
   return localApiClient.get('/agv/task/list', { params });
 }
 
-export function getTask(id) {
+export function getTaskDetail(id) {
   return localApiClient.get(`/agv/task/${id}`);
 }
 
-export function addTask(data) {
-  return localApiClient.post('/agv/task', data);
+export function addTask(taskData) {
+  return localApiClient.post('/agv/task', taskData);
 }
 
-export function updateTask(data) {
-  return localApiClient.put('/agv/task', data);
+export function updateTask(taskData) {
+  return localApiClient.put('/agv/task', taskData);
 }
 
-export function delTask(id) {
+export function deleteTask(id) {
   return localApiClient.delete(`/agv/task/${id}`);
-}
-
-export function preUploadTask(id) {
-  return localApiClient.get(`/agv/task/preUpload/${id}`);
-}
-
-export function uploadTask(id) {
-  return localApiClient.put(`/agv/task/upload/${id}`, null, {
-    timeout: 600000 // 10分钟
-  });
 }
 
 export function startTask(id) {
@@ -82,27 +66,36 @@ export function startTask(id) {
 }
 
 export function endTask(id, isAbort = false) {
-  return localApiClient.put(`/agv/task/stop/${id}?isAbort=${isAbort}`);
+  const queryParam = isAbort ? '?isAbort=true' : '';
+  return localApiClient.put(`/agv/task/stop/${id}${queryParam}`);
+}
+
+export function preUploadTask(id) {
+  return localApiClient.put(`/agv/task/preUpload/${id}`);
+}
+
+export function uploadTask(id) {
+  return localApiClient.put(`/agv/task/upload/${id}`);
 }
 
 // ===================== 故障管理相关接口 =====================
-export function listFlaw(params) {
+export function getFlawList(params = {}) {
   return localApiClient.get('/agv/flaw/list', { params });
 }
 
-export function getFlaw(id) {
+export function getFlawDetail(id) {
   return localApiClient.get(`/agv/flaw/${id}`);
 }
 
-export function addFlaw(data) {
-  return localApiClient.post('/agv/flaw', data);
+export function addFlaw(flawData) {
+  return localApiClient.post('/agv/flaw', flawData);
 }
 
-export function updateFlaw(data) {
-  return localApiClient.put('/agv/flaw', data);
+export function updateFlaw(flawData) {
+  return localApiClient.put('/agv/flaw', flawData);
 }
 
-export function delFlaw(id) {
+export function deleteFlaw(id) {
   return localApiClient.delete(`/agv/flaw/${id}`);
 }
 
@@ -114,12 +107,7 @@ export function uploadFlaw(id) {
   return localApiClient.put(`/agv/flaw/upload/${id}`);
 }
 
-export function batchUpdateFlaw(data) {
-  return localApiClient.post('/agv/flaw/batch', data);
-}
-
-// ===================== 实时数据接口 =====================
-export function getLiveFlawInfo(taskId) {
+export function getLiveFlawsByTaskId(taskId) {
   return localApiClient.get(`/agv/flaw/live/${taskId}`);
 }
 

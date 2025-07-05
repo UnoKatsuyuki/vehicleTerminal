@@ -14,15 +14,24 @@ const getApi = () => {
   return config && config.name === '本地数据源' ? jincangApi : carApi;
 };
 
-// 任务管理相关API - jincangApi.js中有这些方法
+// 任务管理相关API - 使用jincangApi.js中的方法名
 export const listTask = (params) => {
   const api = getApi();
-  return api.listTask(params);
+  // 根据数据源选择正确的方法名
+  if (api === jincangApi) {
+    return api.getTaskList(params);
+  } else {
+    return api.listTask(params);
+  }
 };
 
 export const getTask = (id) => {
   const api = getApi();
-  return api.getTask(id);
+  if (api === jincangApi) {
+    return api.getTaskDetail(id);
+  } else {
+    return api.getTask(id);
+  }
 };
 
 export const addTask = (data) => {
@@ -37,7 +46,11 @@ export const updateTask = (data) => {
 
 export const delTask = (id) => {
   const api = getApi();
-  return api.delTask(id);
+  if (api === jincangApi) {
+    return api.deleteTask(id);
+  } else {
+    return api.delTask(id);
+  }
 };
 
 export const preUploadTask = (id) => {
@@ -60,15 +73,23 @@ export const endTask = (id, isAbort = false) => {
   return api.endTask(id, isAbort);
 };
 
-// 故障管理相关API - jincangApi.js中有这些方法
+// 故障管理相关API - 使用jincangApi.js中的方法名
 export const listFlaw = (params) => {
   const api = getApi();
-  return api.listFlaw(params);
+  if (api === jincangApi) {
+    return api.getFlawList(params);
+  } else {
+    return api.listFlaw(params);
+  }
 };
 
 export const getFlaw = (id) => {
   const api = getApi();
-  return api.getFlaw(id);
+  if (api === jincangApi) {
+    return api.getFlawDetail(id);
+  } else {
+    return api.getFlaw(id);
+  }
 };
 
 export const addFlaw = (data) => {
@@ -83,7 +104,11 @@ export const updateFlaw = (data) => {
 
 export const delFlaw = (id) => {
   const api = getApi();
-  return api.delFlaw(id);
+  if (api === jincangApi) {
+    return api.deleteFlaw(id);
+  } else {
+    return api.delFlaw(id);
+  }
 };
 
 export const confirmFlaw = (id) => {
@@ -96,15 +121,14 @@ export const uploadFlaw = (id) => {
   return api.uploadFlaw(id);
 };
 
-export const batchUpdateFlaw = (data) => {
-  const api = getApi();
-  return api.batchUpdateFlaw(data);
-};
-
-// 实时数据接口 - jincangApi.js中有这些方法
+// 实时数据接口 - 使用jincangApi.js中的方法名
 export const getLiveFlawInfo = (taskId) => {
   const api = getApi();
-  return api.getLiveFlawInfo(taskId);
+  if (api === jincangApi) {
+    return api.getLiveFlawsByTaskId(taskId);
+  } else {
+    return api.getLiveFlawInfo(taskId);
+  }
 };
 
 export const checkAllFlawsConfirmed = (taskId) => {

@@ -132,20 +132,24 @@ export const getDataSourceState = () => {
 
 // 初始化数据源
 export const initializeDataSource = () => {
-  // 从本地存储恢复数据源类型
+  // 从本地存储恢复数据源类型，如果没有保存过则使用默认的小车数据源
   const savedDataSource = localStorage.getItem('currentDataSource');
   if (savedDataSource && dataSourceConfigs[savedDataSource]) {
     currentDataSource.value = savedDataSource;
+  } else {
+    // 如果没有保存过，默认使用小车数据源
+    currentDataSource.value = DataSourceType.VEHICLE;
+    localStorage.setItem('currentDataSource', DataSourceType.VEHICLE);
   }
 
-  // 如果是小车数据源，尝试连接
+  // 如果是小车数据源，尝试连接但不自动切换
   if (currentDataSource.value === DataSourceType.VEHICLE) {
     testVehicleConnection().catch(error => {
-      console.warn('小车连接失败，将使用本地数据源:', error);
-      // 如果小车连接失败，自动切换到本地数据源
-      switchDataSource(DataSourceType.LOCAL);
+      console.warn('小车连接失败，但保持小车数据源设置:', error);
+      // 不自动切换，保持小车数据源设置，只是连接状态为false
     });
   } else {
+    // 本地数据源直接设置为已连接
     dataSourceState.isConnected = true;
     dataSourceState.lastConnectionTime = new Date();
   }
