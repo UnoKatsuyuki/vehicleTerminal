@@ -21,7 +21,7 @@ agvApiClient.interceptors.response.use(
   response => {
     if (response.data) {
       if (typeof response.data.code !== 'undefined') {
-        if (response.data.code === 200 || response.data.code === 0) {
+        if (response.data.code === 200 || response.data.code === '200' || response.data.code === 0) {
           // 对于列表查询 (TableDataInfo)，返回整个对象，包含 total 和 rows
           if (response.data.rows !== undefined && response.data.total !== undefined) {
             return response.data; // 返回 TableDataInfo 结构 { total, rows, code, msg }
