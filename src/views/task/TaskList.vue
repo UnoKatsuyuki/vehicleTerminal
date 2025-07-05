@@ -303,7 +303,27 @@ const testApiConnection = async () => {
   try {
     console.log('=== 开始测试API连接 ===');
     console.log('当前数据源:', currentDataSourceInfo.value);
+    console.log('当前数据源配置:', getCurrentDataSourceConfig());
 
+    // 直接测试axios请求
+    const axios = await import('axios');
+    const testUrl = '/local-api/agv/task/list?pageNum=1&pageSize=5';
+    console.log('测试请求URL:', testUrl);
+
+    try {
+      const directResponse = await axios.default.get(testUrl);
+      console.log('=== 直接axios请求结果 ===');
+      console.log('响应状态:', directResponse.status);
+      console.log('响应头:', directResponse.headers);
+      console.log('原始响应数据:', directResponse.data);
+    } catch (directError) {
+      console.error('直接axios请求失败:', directError);
+      console.error('错误详情:', directError.response?.data);
+      console.error('错误状态:', directError.response?.status);
+    }
+
+    // 测试通过apiManager的请求
+    console.log('=== 通过apiManager测试 ===');
     const response = await listTask({ pageNum: 1, pageSize: 5 });
 
     console.log('=== API响应详情 ===');
@@ -318,6 +338,9 @@ const testApiConnection = async () => {
     ElMessage.success('API连接测试成功，请查看控制台输出');
   } catch (error) {
     console.error('API连接测试失败:', error);
+    console.error('错误详情:', error.response?.data);
+    console.error('错误状态:', error.response?.status);
+    console.error('错误配置:', error.config);
     ElMessage.error(`API连接测试失败: ${error.message}`);
   } finally {
     testingConnection.value = false;

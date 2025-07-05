@@ -13,7 +13,7 @@ const dataSourceConfigs = {
     name: '本地数据源',
     description: '使用本地数据库和后端接口',
     baseUrl: '/local-api',
-    apiBaseUrl: 'http://localhost:8080',
+    apiBaseUrl: '/local-api',
     isMock: false
   },
   [DataSourceType.VEHICLE]: {

@@ -1,8 +1,8 @@
 // 本地数据源API - 按照carApi.js规范整理
 import axios from 'axios';
 
-// 本地数据源常量
-const LOCAL_API_BASE_URL = 'http://localhost:8080';
+// 本地数据源常量 - 使用代理路径避免跨域
+const LOCAL_API_BASE_URL = '/local-api';
 
 // 创建本地API客户端
 const localApiClient = axios.create({
