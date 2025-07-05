@@ -492,7 +492,9 @@ onMounted(async () => {
 async function getList() {
   loading.value = true;
   try {
+    console.log("开始获取任务列表，查询参数:", queryParams);
     const response = await listTask(queryParams);
+    console.log("listTask调用成功，响应:", response);
 
     // 增加调试日志，查看从API获取的原始数据
     console.log("从后端接收到的任务列表响应:", response);
