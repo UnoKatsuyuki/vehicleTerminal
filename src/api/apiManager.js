@@ -121,14 +121,10 @@ export const uploadFlaw = (id) => {
   return api.uploadFlaw(id);
 };
 
-// 实时数据接口 - 使用jincangApi.js中的方法名
+// 实时数据接口 - 只使用小车数据源
 export const getLiveFlawInfo = (taskId) => {
-  const api = getApi();
-  if (api === jincangApi) {
-    return api.getLiveFlawsByTaskId(taskId);
-  } else {
-    return api.getLiveFlawInfo(taskId);
-  }
+  // 实时获取故障信息只在小车数据源中可用
+  return carApi.getLiveFlawInfo(taskId);
 };
 
 export const checkAllFlawsConfirmed = (taskId) => {

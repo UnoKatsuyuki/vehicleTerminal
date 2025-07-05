@@ -73,10 +73,6 @@ export function uploadFlaw(id) {
   return localApiClient.put(`/agv/flaw/upload/${id}`);
 }
 
-export function getLiveFlawsByTaskId(taskId) {
-  return localApiClient.get(`/agv/flaw/live/${taskId}`);
-}
-
 export function checkAllFlawsConfirmed(taskId) {
   return localApiClient.get(`/agv/flaw/checkConfirmed/${taskId}`);
 }
