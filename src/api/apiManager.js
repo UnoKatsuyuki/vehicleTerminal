@@ -11,7 +11,11 @@ const getCurrentConfig = () => {
 // 根据当前数据源选择API
 const getApi = () => {
   const config = getCurrentConfig();
-  return config && config.name === '本地数据源' ? jincangApi : carApi;
+  console.log('当前数据源配置:', config);
+  console.log('数据源名称:', config?.name);
+  const api = config && config.name === '本地数据源' ? jincangApi : carApi;
+  console.log('选择的API:', api === jincangApi ? '本地API' : '小车API');
+  return api;
 };
 
 // 任务管理相关API - 使用jincangApi.js中的方法名
@@ -125,8 +129,12 @@ export const uploadFlaw = (id) => {
 export const getLiveFlawInfo = (taskId) => {
   const api = getApi();
   if (api === jincangApi) {
-    // 本地数据源使用getFlawList获取故障信息
-    return api.getFlawList({ taskId });
+    // 本地数据源使用getFlawList获取故障信息，添加默认分页参数
+    return api.getFlawList({
+      taskId,
+      pageNum: 1,
+      pageSize: 1000
+    });
   } else {
     // 小车数据源使用实时接口
     return carApi.getLiveFlawInfo(taskId);
@@ -179,8 +187,12 @@ export const getTaskDetails = (taskId) => {
 export const getFlawList = (taskId) => {
   const api = getApi();
   if (api === jincangApi) {
-    // 本地数据源使用getFlawList
-    return api.getFlawList({ taskId });
+    // 本地数据源使用getFlawList，添加默认分页参数
+    return api.getFlawList({
+      taskId,
+      pageNum: 1,
+      pageSize: 1000
+    });
   } else {
     // 小车数据源使用getFlawList
     return carApi.getFlawList(taskId);
