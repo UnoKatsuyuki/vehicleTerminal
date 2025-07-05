@@ -207,8 +207,10 @@ export const startTask = (taskId) => {
 };
 export const getVideoStreamUrl = (deviceId) => {
   if (!deviceId) return '';
-  // 使用代理路径，而不是直接访问小车服务器
-  return `/webrtc-api/live/${deviceId}_01.flv`;
+  // 返回完整的URL，包含协议和主机
+  const protocol = window.location.protocol;
+  const host = window.location.host;
+  return `${protocol}//${host}/webrtc-api/live/${deviceId}_01.flv`;
 };
 export function addFlaw(data) {
   return agvApiClient.post('/agv/flaw', data);
