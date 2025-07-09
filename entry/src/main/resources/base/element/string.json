@@ -11,6 +11,14 @@
     {
       "name": "EntryAbility_label",
       "value": "label"
+    },
+    {
+      "name": "apply_for_network",
+      "value": "Allow the app to access the network"
+    },
+    {
+      "name": "distributed_data_sync",
+      "value": "Allow data interchange between different devices"
     }
   ]
 }
