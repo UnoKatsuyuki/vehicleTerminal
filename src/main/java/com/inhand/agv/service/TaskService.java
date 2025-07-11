@@ -78,9 +78,9 @@ public class TaskService {
             throw new IllegalArgumentException(validation.getMessage());
         }
 
-        //if (taskRepository.findByTaskCode(taskDTO.getTaskCode()).isPresent()) {
-            //throw new IllegalArgumentException("任务编号 '" + taskDTO.getTaskCode() + "' 已存在，请使用其他编号。");
-        //}
+        if (taskRepository.findByTaskCode(taskDTO.getTaskCode()).isPresent()) {
+            throw new IllegalArgumentException("任务编号 '" + taskDTO.getTaskCode() + "' 已存在，请使用其他编号。");
+        }
 
         AgvTask task = new AgvTask();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");

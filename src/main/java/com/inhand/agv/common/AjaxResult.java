@@ -27,7 +27,6 @@ public class AjaxResult {
         return new AjaxResult(code, msg, null);
     }
 
-    // Getters and Setters
     public int getCode() {
         return code;
     }
