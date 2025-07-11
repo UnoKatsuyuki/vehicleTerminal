@@ -7,9 +7,166 @@
     <script src="./js/EasyPlayer-pro.js"></script>
     <title>智能巡检系统</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+      /* Voice Assistant Widget Styles */
+      .voice-assistant-widget {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 350px;
+        max-width: 90%;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        background-color: white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
+        transition: all 0.3s ease-in-out;
+      }
+      .voice-assistant-widget h1 {
+        font-size: 1rem;
+        padding: 0;
+        margin: 0;
+        border: none;
+        color: #333;
+      }
+      #conversation-log {
+        height: 280px;
+        overflow-y: auto;
+        padding: 15px;
+        background-color: #fff;
+        font-size: 0.9rem;
+      }
+      #conversation-log p {
+        margin: 0 0 12px 0;
+        padding: 8px 12px;
+        border-radius: 8px;
+        line-height: 1.5;
+        max-width: 85%;
+      }
+      #conversation-log p:nth-child(odd) { /* User's speech */
+        background-color: #e1f5fe;
+        margin-left: auto;
+        text-align: right;
+      }
+      #conversation-log p:nth-child(even) { /* AI's response */
+        background-color: #f1f1f1;
+        margin-right: auto;
+      }
+      #speak-button {
+        width: 100%;
+        padding: 15px;
+        border: none;
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+        font-size: 1rem;
+        border-bottom-left-radius: 10px;
+        border-bottom-right-radius: 10px;
+        transition: background-color 0.2s;
+      }
+      #speak-button:hover {
+        background-color: #0056b3;
+      }
+      #speak-button:disabled {
+        background-color: #6c757d;
+        cursor: not-allowed;
+      }
+
+      /* NEW: Style for when the button is actively listening */
+      #speak-button.listening {
+        background-color: #dc3545; /* Red color to indicate recording */
+        border-color: #c82333;
+      }
+
+      /* --- NEW STYLES for Draggable/Collapsible Widget --- */
+      .voice-assistant-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        /* cursor: grab; /* Draggable cursor removed */
+        padding: 12px 15px;
+        background-color: #f7f7f7;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+        border-bottom: 1px solid #eee;
+      }
+      
+      .voice-assistant-header h1 {
+        font-size: 1rem;
+        padding: 0;
+        margin: 0;
+        border: none;
+        color: #333;
+      }
+
+      #minimize-button {
+        cursor: pointer;
+        background: #e0e0e0;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+      }
+      #minimize-button:hover {
+        background: #d0d0d0;
+      }
+
+      /* Collapsed state */
+      .voice-assistant-widget.collapsed {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        overflow: hidden;
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #007bff;
+        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
+      }
+
+      .voice-assistant-widget.collapsed .voice-assistant-header,
+      .voice-assistant-widget.collapsed #conversation-log,
+      .voice-assistant-widget.collapsed #speak-button {
+        display: none;
+      }
+      
+      .voice-assistant-widget.collapsed::before {
+        content: '🎙️'; /* Mic icon */
+        font-size: 28px;
+        color: white;
+      }
+      /* --- END NEW STYLES --- */
+    </style>
   </head>
   <body>
+    <!-- Your original app content will be mounted here -->
     <div id="app"></div>
+
+    <!-- Floating Voice Assistant Widget -->
+    <div class="voice-assistant-widget">
+      <!-- New Header for Dragging and Minimizing -->
+      <div class="voice-assistant-header">
+        <h1>AGV 语音助手</h1>
+        <button id="minimize-button" title="最小化">-</button>
+      </div>
+      
+      <!-- Voice selector removed -->
+
+      <div id="conversation-log"></div>
+      <button id="speak-button">点击说话</button>
+    </div>
+
+    <!-- Load both the original app script and our voice assistant script -->
     <script type="module" src="/src/main.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>
